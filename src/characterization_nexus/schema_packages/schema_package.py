@@ -10,7 +10,7 @@ if TYPE_CHECKING:
         BoundLogger,
     )
 
-from nomad.datamodel.data import ArchiveSection, EntryData
+from nomad.datamodel.data import ArchiveSection
 
 from nomad.metainfo import (
     MEnum,
@@ -29,7 +29,7 @@ from schema_packages.fabrication_utilities import FabricationProcessStep
 m_package = Package(name='General instruments for characterization steps')
 
 
-class BaseConverter(ArchiveSection, EntryData):
+class BaseConverter(ArchiveSection):
 
     m_def=Section()
 
@@ -39,6 +39,11 @@ class BaseConverter(ArchiveSection, EntryData):
         a_eln=dict(component="AutocompleteEditQuantity"),
     )
 
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        super().normalize(archive, logger)
+
+
+class CharacterizationStep(FabricationProcessStep):
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
