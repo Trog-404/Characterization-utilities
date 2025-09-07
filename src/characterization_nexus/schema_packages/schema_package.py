@@ -14,6 +14,7 @@ from nomad.config import config
 from nomad.datamodel.data import Schema
 from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
 from nomad.metainfo import Quantity, SchemaPackage
+from schema_packages.fabrication_utilities import FabricationProcessStep
 
 configuration = config.get_plugin_entry_point(
     'characterization_nexus.schema_packages:schema_package_entry_point'
@@ -33,6 +34,11 @@ class NewSchemaPackage(Schema):
 
         logger.info('NewSchema.normalize', parameter=configuration.parameter)
         self.message = f'Hello {self.name}!'
+
+
+class BaseConverter(FabricationProcessStep):
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        super().normalize(archive, logger)
 
 
 m_package.__init_metainfo__()
