@@ -1,0 +1,28 @@
+{
+  "template": "https://github.com/FAIRmat-NFDI/cookiecutter-nomad-plugin",
+  "commit": "3c5b9b8bfb4c6e91c3f84aa6e5e453f2b721a326",
+  "checkout": null,
+  "context": {
+    "cookiecutter": {
+      "full_name": "Matteo Bontorno",
+      "email": "mbontorno@fbk.eu",
+      "github_username": "Trog-404",
+      "plugin_name": "characterization_nexus",
+      "module_name": "characterization_nexus",
+      "short_description": "Plugin to standardize proprietary data formats in NeXuS",
+      "version": "0.1.0",
+      "license": "MIT",
+      "include_schema_package": true,
+      "include_normalizer": false,
+      "include_parser": false,
+      "include_app": true,
+      "include_example_uploads": true,
+      "_copy_without_render": [
+        "*.html"
+      ],
+      "_template": "https://github.com/FAIRmat-NFDI/cookiecutter-nomad-plugin",
+      "_commit": "3c5b9b8bfb4c6e91c3f84aa6e5e453f2b721a326"
+    }
+  },
+  "directory": null
+}
