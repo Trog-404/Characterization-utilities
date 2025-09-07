@@ -10,33 +10,35 @@ if TYPE_CHECKING:
         BoundLogger,
     )
 
-from nomad.config import config
-from nomad.datamodel.data import Schema
-from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
-from nomad.metainfo import Quantity, SchemaPackage
-from schema_packages.fabrication_utilities import FabricationProcessStep
+from nomad.datamodel.data import ArchiveSection, EntryData
 
-configuration = config.get_plugin_entry_point(
-    'characterization_nexus.schema_packages:schema_package_entry_point'
+from nomad.metainfo import (
+    MEnum,
+    Package,
+    Quantity,
+    Section,
 )
 
-m_package = SchemaPackage()
+from pynxtools.definitions.dev_tools.utils.nxdl_utils import (
+    get_app_defs_names,  # pylint: disable=import-error
+)
+
+from schema_packages.fabrication_utilities import FabricationProcessStep
 
 
-class NewSchemaPackage(Schema):
-    name = Quantity(
-        type=str, a_eln=ELNAnnotation(component=ELNComponentEnum.StringEditQuantity)
+m_package = Package(name='General instruments for characterization steps')
+
+
+class BaseConverter(ArchiveSection, EntryData):
+
+    m_def=Section()
+
+    nxdl = Quantity(
+        type=MEnum(sorted(list(set(get_app_defs_names())))),
+        description="The nxdl needed for running the Nexus converter.",
+        a_eln=dict(component="AutocompleteEditQuantity"),
     )
-    message = Quantity(type=str)
 
-    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-        super().normalize(archive, logger)
-
-        logger.info('NewSchema.normalize', parameter=configuration.parameter)
-        self.message = f'Hello {self.name}!'
-
-
-class BaseConverter(FabricationProcessStep):
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
