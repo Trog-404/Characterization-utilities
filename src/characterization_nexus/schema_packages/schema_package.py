@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from structlog.stdlib import (
         BoundLogger,
     )
+import os
 
 from nomad.datamodel.data import ArchiveSection
 from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
@@ -20,10 +21,7 @@ from schema_packages.Items import Sample
 
 from characterization_nexus.schema_packages.convert.common import (
     instanciate_nexus,
-    write_additional_from_list,
-)
-from characterization_nexus.schema_packages.convert.Tiff_to_dict_converter import (
-    write_data_to_nexus,
+    write_user_from_nomad,
 )
 
 m_package = Package(name='General instruments for characterization steps')
@@ -116,23 +114,37 @@ class CharacterizationStepConverter(FabricationProcessStep):
         super().normalize(archive, logger)
         raw_path = archive.m_context.raw_path()
         if self.export:
-            list_to_convert = self.additional_json_files_to_convert
-            if list_to_convert is not None and len(list_to_convert) > 0:
-                instanciate_nexus(raw_path, self.output, self.nxdl)
-                if len(self.input_data_files) > 0:
-                    write_data_to_nexus(raw_path, self.input_data_files[0], self.output)
-                write_additional_from_list(raw_path, list_to_convert, self.output)
-                try:
-                    archive.m_context.process_updated_raw_file(
-                        self.output, allow_modify=True
-                    )
-                except Exception as e:
-                    logger.error(
-                        'could not trigger processing', mainfile=self.output, exc_info=e
-                    )
-                else:
-                    logger.info('triggered processing', mainfile=self.output)
-                self.nexus_view = f'../upload/archive/mainfile/{self.output}#/data'
+#            list_to_convert = self.additional_json_files_to_convert
+            try:
+                os.remove(os.path.join(raw_path, self.output))
+                archive.m_context.process_updated_raw_file(
+                    archive.data.output, allow_modify=True
+                )
+            except Exception:
+                pass
+            instanciate_nexus(raw_path, self.output, self.nxdl)
+            for count, user in enumerate(self.users):
+                new_dict = user.__dict__
+                for row in new_dict:
+                    if new_dict[row] is not None and 'm_' not in row:
+                        logger.info(f'Chiave {row} e valore {new_dict[row]}')
+                write_user_from_nomad(raw_path, self.output, count, new_dict)
+#            if list_to_convert is not None and len(list_to_convert) > 0:
+#                instanciate_nexus(raw_path, self.output, self.nxdl)
+#                if len(self.input_data_files) > 0:
+#                 write_data_to_nexus(raw_path, self.input_data_files[0], self.output)
+#                write_additional_from_list(raw_path, list_to_convert, self.output)
+            try:
+                archive.m_context.process_updated_raw_file(
+                    self.output, allow_modify=True
+                )
+            except Exception as e:
+                logger.error(
+                    'could not trigger processing', mainfile=self.output, exc_info=e
+                )
+            else:
+                logger.info('triggered processing', mainfile=self.output)
+            self.nexus_view = f'../upload/archive/mainfile/{self.output}#/data'
 
 
 m_package.__init_metainfo__()
