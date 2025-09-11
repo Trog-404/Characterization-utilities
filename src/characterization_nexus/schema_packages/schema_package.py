@@ -19,10 +19,12 @@ from pynxtools.definitions.dev_tools.utils.nxdl_utils import (
 from schema_packages.fabrication_utilities import FabricationProcessStep
 from schema_packages.Items import Sample
 
-from characterization_nexus.schema_packages.convert.common import (
+from characterization_nexus.convert.common import (
     instanciate_nexus,
-    write_user_from_nomad,
+    write_sub_from_nomad,
 )
+from characterization_nexus.mappers import sample_mapper as smap
+from characterization_nexus.mappers import user_mapper as umap
 
 m_package = Package(name='General instruments for characterization steps')
 
@@ -80,13 +82,6 @@ class CharacterizationStepConverter(FabricationProcessStep):
         a_eln={'component': 'FileEditQuantity'},
     )
 
-    additional_json_files_to_convert = Quantity(
-        type=str,
-        description='Here you can put all jsons for more details in the NeXus entry',
-        shape=['*'],
-        a_eln={'component': 'FileEditQuantity'},
-    )
-
     output = Quantity(
         type=str,
         description='Output Nexus filename to save all the data. Default: output.nxs',
@@ -113,38 +108,40 @@ class CharacterizationStepConverter(FabricationProcessStep):
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
         raw_path = archive.m_context.raw_path()
+        files_list = self.input_data_files
         if self.export:
-#            list_to_convert = self.additional_json_files_to_convert
+            output_file = os.path.join(raw_path, self.output)
             try:
-                os.remove(os.path.join(raw_path, self.output))
+                os.remove(output_file)
                 archive.m_context.process_updated_raw_file(
                     archive.data.output, allow_modify=True
                 )
             except Exception:
                 pass
-            instanciate_nexus(raw_path, self.output, self.nxdl)
-            for count, user in enumerate(self.users):
-                new_dict = user.__dict__
-                for row in new_dict:
-                    if new_dict[row] is not None and 'm_' not in row:
-                        logger.info(f'Chiave {row} e valore {new_dict[row]}')
-                write_user_from_nomad(raw_path, self.output, count, new_dict)
-#            if list_to_convert is not None and len(list_to_convert) > 0:
-#                instanciate_nexus(raw_path, self.output, self.nxdl)
-#                if len(self.input_data_files) > 0:
-#                 write_data_to_nexus(raw_path, self.input_data_files[0], self.output)
-#                write_additional_from_list(raw_path, list_to_convert, self.output)
-            try:
-                archive.m_context.process_updated_raw_file(
-                    self.output, allow_modify=True
-                )
-            except Exception as e:
-                logger.error(
-                    'could not trigger processing', mainfile=self.output, exc_info=e
-                )
-            else:
-                logger.info('triggered processing', mainfile=self.output)
-            self.nexus_view = f'../upload/archive/mainfile/{self.output}#/data'
+            if self.nxdl:
+                instanciate_nexus(output_file, archive.data)
+                if files_list is not None and len(files_list) > 0:
+                    pass
+                if self.users is not None and len(self.users) > 0:
+                    users = list(archive.data.users)
+                    for user in users:
+                        write_sub_from_nomad(output_file, user, umap)
+                if self.sample:
+                    sample = archive.data.sample
+                    for el in sample:
+                        logger.info(f'Elemento dentro Sample è {el}')
+                    write_sub_from_nomad(output_file, sample, smap)
+                try:
+                    archive.m_context.process_updated_raw_file(
+                        self.output, allow_modify=True
+                    )
+                except Exception as e:
+                    logger.error(
+                        'could not trigger processing', mainfile=self.output, exc_info=e
+                    )
+                else:
+                    logger.info('triggered processing', mainfile=self.output)
+                self.nexus_view = f'../upload/archive/mainfile/{self.output}#/data'
 
 
 m_package.__init_metainfo__()
