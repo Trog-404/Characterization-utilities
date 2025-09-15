@@ -1,6 +1,24 @@
-from characterization_nexus.mappers.class_mapper import mapper as class_mapper
-from characterization_nexus.mappers.entry_mapper import mapper as entry_mapper
-from characterization_nexus.mappers.sample_mapper import mapper as sample_mapper
-from characterization_nexus.mappers.user_mapper import mapper as user_mapper
+import importlib
 
-__all__ = ['class_mapper', 'entry_mapper', 'user_mapper', 'sample_mapper']
+
+def load_mapper_manager(output_type: str):
+    """
+    Carica dinamicamente il dizionario mapperMenager
+    dal pacchetto corretto (es. em_mappers, afm_mappers, ...).
+    
+    output_type: stringa tipo 'NXem' o 'NXafm'
+    """
+    # mappatura tra output_type e package
+    type_to_package = {
+        "NXem": "characterization_nexus.mappers.em_mappers",
+        "NXafm": "characterization_nexus.mappers.afm_mappers",
+        # aggiungi altri qui
+    }
+
+    if output_type not in type_to_package:
+        raise ValueError(f"Output type {output_type} non supportato")
+
+    module_path = type_to_package[output_type]
+    module = importlib.import_module(module_path)
+
+    return getattr(module, "mapperMenager", None)

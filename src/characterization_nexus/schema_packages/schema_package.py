@@ -12,21 +12,122 @@ if TYPE_CHECKING:
 import os
 
 from nomad.datamodel.data import ArchiveSection
+from nomad.datamodel.metainfo.basesections.v2 import Activity
 from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
 from pynxtools.definitions.dev_tools.utils.nxdl_utils import (
     get_app_defs_names,  # pylint: disable=import-error
 )
 from schema_packages.fabrication_utilities import FabricationProcessStep
-from schema_packages.Items import Sample
+from schema_packages.Items import Item, ItemComponent
 
-from characterization_nexus.convert.common import (
-    instanciate_nexus,
-    write_sub_from_nomad,
-)
-from characterization_nexus.mappers import sample_mapper as smap
-from characterization_nexus.mappers import user_mapper as umap
+from characterization_nexus.convert.common import instanciate_nexus
+from characterization_nexus.convert.em_convert.parser import write_data_to_nexus
 
 m_package = Package(name='General instruments for characterization steps')
+
+class SampleComponentbase(ItemComponent):
+    m_def = Section(
+        a_eln={
+            'properties': {
+                'order': [
+                    'name',
+                    'description',
+                    'chemical_formula',
+                    'datetime',
+                    'component_id',
+                    'datetime',
+                ],
+            },
+        }
+    )
+
+    history = SubSection(
+        section_def=Activity,
+        description='Here you can briefly describe the preparation of the component',
+        repeats=False,
+    )
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        super().normalize(archive, logger)
+
+
+class Samplebase(Item):
+    m_def = Section(
+        a_eln={
+            'properties': {
+                'order': [
+                    'name',
+                    'description',
+                    'chemical_formula',
+                    'lab_id',
+                    'datetime',
+                    'id_wafer_parent',
+                    'shapeType',
+                    'type',
+                    'physical_form',
+                    'situation',
+                    'notes',
+                ],
+            },
+        }
+    )
+    type = Quantity(
+        type=MEnum(
+            'sample',
+            'sample+can',
+            'can',
+            'sample+buffer',
+            'buffer',
+            'calibration sample',
+            'normalization sample',
+            'simulated data',
+            'none',
+            'sample environment',
+        ),
+        a_eln={'component': 'EnumEditQuantity'},
+    )
+
+    physical_form = Quantity(
+        type=MEnum(
+            'crystal',
+            'foil',
+            'pellet',
+            'powder',
+            'thin film',
+            'disc',
+            'foam',
+            'gas',
+            'liquid',
+            'amorphous',
+        ),
+        a_eln={'component': 'EnumEditQuantity'},
+    )
+
+    situation = Quantity(
+        type=MEnum(
+            'air',
+            'vacuum',
+            'inert atmosphere',
+            'oxidising atmosphere',
+            'reducing atmosphere',
+            'sealed can',
+            'other',
+        ),
+        a_eln={'component': 'EnumEditQuantity'},
+    )
+    components = SubSection(
+        section_def=SampleComponentbase,
+        description='If the sample has different compoents you can describe them here',
+        repeats=True,
+    )
+    history = SubSection(
+        section_def=Activity,
+        description='Here you can briefly describe the preparation of the item',
+        repeats=False,
+    )
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        super().normalize(archive, logger)
 
 
 class CharacterizationStepConverter(FabricationProcessStep):
@@ -103,10 +204,9 @@ class CharacterizationStepConverter(FabricationProcessStep):
         a_eln=dict(overview=True),
     )
 
-    sample = SubSection(section_def=Sample, repeats=False)
+    samples = SubSection(section_def=Samplebase, repeats=True)
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-        super().normalize(archive, logger)
         raw_path = archive.m_context.raw_path()
         files_list = self.input_data_files
         if self.export:
@@ -119,18 +219,11 @@ class CharacterizationStepConverter(FabricationProcessStep):
             except Exception:
                 pass
             if self.nxdl:
-                instanciate_nexus(output_file, archive.data)
+                instanciate_nexus(output_file, archive.data, self.nxdl)
                 if files_list is not None and len(files_list) > 0:
-                    pass
-                if self.users is not None and len(self.users) > 0:
-                    users = list(archive.data.users)
-                    for user in users:
-                        write_sub_from_nomad(output_file, user, umap)
-                if self.sample:
-                    sample = archive.data.sample
-                    for el in sample:
-                        logger.info(f'Elemento dentro Sample è {el}')
-                    write_sub_from_nomad(output_file, sample, smap)
+                    for file in files_list:
+                        to_write = os.path.join(raw_path, file)
+                        write_data_to_nexus(output_file, to_write)
                 try:
                     archive.m_context.process_updated_raw_file(
                         self.output, allow_modify=True
@@ -142,6 +235,7 @@ class CharacterizationStepConverter(FabricationProcessStep):
                 else:
                     logger.info('triggered processing', mainfile=self.output)
                 self.nexus_view = f'../upload/archive/mainfile/{self.output}#/data'
+        super().normalize(archive, logger)
 
 
 m_package.__init_metainfo__()

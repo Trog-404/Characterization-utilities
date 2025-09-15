@@ -1,13 +1,19 @@
-import os
-import re
-
 import h5py
 import numpy as np
 import tifffile as tf
 
 from characterization_nexus.convert.common import write_data
+from characterization_nexus.convert.em_convert.fei_helios_matcher import matching
+from characterization_nexus.convert.em_convert.utils import (
+    generate_numeric_values,
+    get_nested,
+    search_quantities,
+    set_nested,
+    try_parse_number,
+)
 
 
+# This function is able to extract from a multipage tiff an array of data for each image
 def extract_data_from_tif(tif_image):
     name = tif_image.split('/')[-1]
     name = name.split('.')[0]
@@ -22,14 +28,8 @@ def extract_data_from_tif(tif_image):
     return name, arrays
 
 
-def search_quantities(text):
-    tag_dict = {}
-    pattern = r'([A-Z]\w+)\s*=\s*((?:(?!\\n)[^;,])+)'
-    matches = re.findall(pattern, text)
-    for name, value in matches:
-        tag_dict[name] = value
-
-    return tag_dict
+# This function extracts metadata from each tiff and id needed convert quantities in
+# type hashable or usabel as dictionar values.
 
 
 def extract_metadata_from_tif(percorso):
@@ -59,98 +59,16 @@ def extract_metadata_from_tif(percorso):
     return dictionar
 
 
-def get_nested(d: dict, path: str, default=None):
-    keys = path.split('.')
-    for k in keys:
-        if not isinstance(d, dict) or k not in d:
-            return default
-        d = d[k]
-    return d
+# Funzione che infine restituisce il dizionario finale che ha una struttura come
+# descritto nell'xml della microscopia elettronica
+# (pynxtools/definitions/applications/NXem.nxdl.xml) che poi verrà passato alla funzione
+# write_data in common per scrivere il nexus(o meglio aggiornarlo) nella sua parte di
+# dati.
 
 
-def set_nested(d: dict, path: str, value):
-    keys = path.split('.')
-    for k in keys[:-1]:
-        d = d.setdefault(k, {})
-    d[keys[-1]] = value
-
-
-mapping = {
-    'instrument.name': {
-        'aliases': ['name', 'Device', 'FEI_HELIOS.System.SystemType', 'Strumento.nome']
-    },
-    'instrument.fabrication.model': {'aliases': ['model', 'DeviceModel']},
-    'instrument.fabrication.manufacturer': {'aliases': ['manufacturer', 'Make']},
-    'instrument.detector.type': {'aliases': ['Detector', 'FEI_HELIOS.Detectors.Name']},
-    'instrument.program.program.program': {
-        'aliases': ['Software', 'FEI_HELIOS.System.Software']
-    },
-    'instrument.program.program.version': {
-        'aliases': ['SoftwareVersion', 'FEI_HELIOS.System.Software']
-    },
-    'instrument.ebeam_column.electron_source.emitter_type': {
-        'aliases': ['FEI_HELIOS.EBeam.Source', 'Gun']
-    },
-    'events.instrument.optics.magnification': {
-        'aliases': ['Magnification'],
-        'get': lambda input_dict: (
-            get_nested(input_dict, 'FEI_HELIOS.Image.MagCanvasRealWidth')
-            / get_nested(input_dict, 'FEI_HELIOS.Scan.HorFieldsize')
-            if get_nested(input_dict, 'FEI_HELIOS.Image.MagCanvasRealWidth') is not None
-            and get_nested(input_dict, 'FEI_HELIOS.Scan.HorFieldsize') is not None
-            and get_nested(input_dict, 'FEI_HELIOS.Scan.HorFieldsize') != 0
-            else None
-        ),
-    },
-    'events.instrument.optics.working_distance': {
-        'aliases': ['WD', 'FEI_HELIOS.EBeam.WD'],
-        'unit': 'm',
-    },
-    'events.instrument.optics.probe_current': {
-        'aliases': ['PredictedBeamCurrent', 'FEI_HELIOS.EBeam.BeamCurrent'],
-        'unit': 'A',
-    },
-    'events.instrument.optics.tilt_correction': {
-        'aliases': ['TiltCorrection', 'FEI_HELIOS.EBeam.TiltCorrectionIsOn'],
-        'get': lambda x: (
-            True
-            if str(x).lower() == 'yes' or (isinstance(x, int | float) and x != 0)
-            else False
-        ),
-    },
-    'events.instrument.ebeam_column.operation_mode': {'aliases': ['ScanMode']},
-    'events.instrument.ebeam_column.electron_source.voltage': {
-        'aliases': ['AcceleratorVoltage', 'FEI_HELIOS.EBeam.HV'],
-        'unit': 'V',
-    },
-    'events.instrument.ebeam_column.electron_source.emission_current': {
-        'aliases': ['EmissionCurrent', 'FEI_HELIOS.EBeam.EmissionCurrent'],
-        'unit': 'A',
-    },
-}
-
-
-def try_parse_number(value: str):
-    # Prova a convertire una stringa in int o float. Se non riesce, restituisce None.
-    try:
-        if '.' in value:
-            return float(value)
-        else:
-            return int(value)
-    except (ValueError, TypeError):
-        return None
-
-
-def generate_numeric_values(numeric_value, unit, output, target_path):
-    if unit is not None:
-        set_nested(output, target_path, {'value': numeric_value, 'unit': unit})
-    else:
-        set_nested(output, target_path, numeric_value)
-
-
-def transform(input_dict: dict, mapping: dict) -> dict:
+def transform(input_dict: dict, matching: dict) -> dict:
     output = {}
-    for target_path, rules in mapping.items():
+    for target_path, rules in matching.items():
         aliases = rules.get('aliases', [])
         unit = rules.get('unit', None)
         metodo = rules.get('get', None)
@@ -205,6 +123,11 @@ def transform(input_dict: dict, mapping: dict) -> dict:
     return output
 
 
+# Questa serve qualora ogni pagina riporti metdati diversi e quindi è utile perché in
+# combinazione con la funzione di parsing dei dati genera un'altra lista che avrà i
+# metadati dell'immagine corrispondente allo stesso indice nella lista di arrays
+
+
 def generate_metadata_array(tif_file):
     metadata = extract_metadata_from_tif(tif_file)
     outputs = []
@@ -213,9 +136,13 @@ def generate_metadata_array(tif_file):
         if i == 0:
             pass
         else:
-            output = transform(metadata[f'page_{i}'], mapping)
+            output = transform(metadata[f'page_{i}'], matching)
             outputs.append(output)
     return outputs
+
+
+# Funzione che finalmente scrive la sezione measurement con i dati parsati da quelle
+# precedenti
 
 
 def write_measurement_section(where, tiff_file):
@@ -242,10 +169,14 @@ def write_measurement_section(where, tiff_file):
             image_2d.attrs['axis_j_indices'] = 1
 
 
-def write_data_to_nexus(raw_path, data_file, output):
-    with h5py.File(os.path.join(raw_path, output), 'a') as f:
+# Infine la funzione che apre il file nexus(se già esistente lo aggiorna soltanto senza
+# eliminare dati già esistenti) e richiama la funzione precedente.
+
+
+def write_data_to_nexus(output, data_file):
+    with h5py.File(output, 'a') as f:
         entry = f['entry']
-        entry.attrs['default'] = '/entry/measurement/events/image_0/image_2d'
+        #        entry.attrs['default'] = '/entry/measurement/events/image_0/image_2d'
         meas = entry.create_group('measurement')
         meas.attrs['NX_class'] = 'NXem_measurement'
-        write_measurement_section(meas, os.path.join(raw_path, data_file))
+        write_measurement_section(meas, data_file)

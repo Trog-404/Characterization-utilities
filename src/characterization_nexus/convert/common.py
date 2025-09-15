@@ -2,15 +2,24 @@
 #         FILE CON FUNZIONI UTILI NELLA GENERAZIONE DEI FILE NEXUS A PARTIRE          #
 #                        DA JSON O DIZIONARI NON SERIALIZZATI                         #
 #######################################################################################
-import json
-import os
-from pathlib import Path
 
 import h5py
 import numpy as np
+from dateutil.parser import isoparse
 
-from characterization_nexus.mappers import class_mapper as cmap
-from characterization_nexus.mappers import entry_mapper as emap
+from characterization_nexus.mappers import load_mapper_manager
+
+# Funzioni utili per lavorare con i datetime e scriverli in nexus con un controllo sul
+# tipo se è quello atteso
+
+dt=h5py.string_dtype(encoding="utf-8")
+
+def is_iso8601(s: str) -> bool:
+    try:
+        isoparse(s)
+        return True
+    except (ValueError, TypeError):
+        return False
 
 # La prossima funzione ci permette di generare i gruppi dei nostri file hdf5
 # leggendo la struttura dei json i quali saranno del tipo:
@@ -86,81 +95,9 @@ def write_data(dati, where):
                 newwhere = create_group_to_fill(dati[row]['m_def'], where, row)
                 write_data(dati[row], newwhere)
 
-
-# Piccola funzione per leggere e caricare il contenuto di un json come dati
-
-
-def write_from_json(json_input, where):
-    with open(json_input, encoding='utf-8') as file:
-        dati = json.load(file)
-        write_data(dati, where)
-
-
-# Funzione per aprire json multipli avendo comunque cura di aprire per primo il file
-# contenente le informazioni dell'entry (il top level dei nostri nexus). E poi dovendo
-# dare sempre un sample, uno strumento e uno user generiamo a monte i gruppi per quelle
-# sottoentries così non serve m_def a inizio di ogni file.
-
-
-def write_from_multiple_jsons(directory, entry):
-    for file in os.listdir(directory):
-        if Path(file).suffix == '.json' and 'entry' in file:
-            write_from_json(os.path.join(directory, file), entry)
-
-    for file in os.listdir(directory):
-        if Path(file).suffix == '.json' and 'sample' in file:
-            sample = create_group_to_fill('NXsample', entry, 'sample')
-            write_from_json(os.path.join(directory, file), sample)
-        if Path(file).suffix == '.json' and 'user' in file:
-            user = create_group_to_fill('NXuser', entry, 'user')
-            write_from_json(os.path.join(directory, file), user)
-        if Path(file).suffix == '.json' and 'instrument' in file:
-            instr = create_group_to_fill('NXinstrument', entry, 'instrument')
-            write_from_json(os.path.join(directory, file), instr)
-
-
-def write_additional_from_list(raw_path, file_list, output):
-    with h5py.File(os.path.join(raw_path, output), 'a') as f:
-        entry = f['entry']
-        for file in file_list:
-            if Path(file).suffix == '.json' and 'entry' in file:
-                write_from_json(os.path.join(raw_path, file), entry)
-
-        for file in file_list:
-            if Path(file).suffix == '.json' and 'sample' in file:
-                sample = create_group_to_fill('NXsample', entry, 'sample')
-                write_from_json(os.path.join(raw_path, file), sample)
-            if Path(file).suffix == '.json' and 'user' in file:
-                user = create_group_to_fill('NXuser', entry, 'user')
-                write_from_json(os.path.join(raw_path, file), user)
-            if Path(file).suffix == '.json' and 'instrument' in file:
-                instr = create_group_to_fill('NXinstrument', entry, 'instrument')
-                write_from_json(os.path.join(raw_path, file), instr)
-
-
-def write_scalar_value(valore, nome, where):
-    if valore is not None:
-        if isinstance(valore, str | float | int | bool):
-            where.create_dataset(nome, data=valore)
-
-
-def write_data_new(dati, where, mapper: dict) -> None:
-    for el in dati:
-        if el in mapper:
-            valore = getattr(dati, el)
-            if np.isscalar(valore):
-                write_scalar_value(valore, mapper[el], where)
-            else:
-                pass
-
-
-def instanciate_nexus(output_file, dati) -> None:
-    with h5py.File(output_file, 'w') as f:
-        entry = f.create_group('entry')
-        entry.attrs['NX_class'] = 'NXentry'
-        if dati is not None:
-            write_data_new(dati, entry, emap)
-
+# Le prossime due funzioni servono per estrarre il nome della classe che si legge
+# nelle sottosezioni per poi utilizzarlo nella definizione della classe nexus da usare
+# nella traduzione e quindi per reindirizzare poi al corretto mapping.
 
 def get_real_mdef(old_key: str) -> str:
     if ':' in str(old_key):
@@ -169,11 +106,60 @@ def get_real_mdef(old_key: str) -> str:
         new_key = str(old_key)
     return new_key.split('(', 1)[0]
 
+def is_scalar(value) ->bool :
+    if np.isscalar(value):
+        return True
+    elif isinstance(value, str):
+        return True
+    else:
+        return False
 
-def write_sub_from_nomad(output_file, dati, mapper: dict) -> None:
-    with h5py.File(output_file, 'a') as f:
-        entry = f['entry']
-        group = entry.create_group(f'{dati.name}')
-        key = get_real_mdef(str(dati))
-        group.attrs['NX_class'] = cmap[key]
-        write_data_new(dati, group, mapper)
+# Questa funzione ci permette di scrivere correttamente i dati dalla struttura ad
+# archivio di nomad alla struttura nexus. Quindi fondamentalmente è il building block
+# con cui gli ELNs vengono tradotti in dati nexus.
+
+def write_data_new(dati, where, mapper: dict, MM: dict) -> None:
+    for el in dati:
+        valore = getattr(dati, el)
+        if valore is not None:
+            mdef = get_real_mdef(valore)
+            if is_scalar(valore):
+                if el in mapper:
+                    if is_iso8601(valore):
+                        where.create_dataset(mapper[el], data=valore, dtype=dt)
+                    else:
+                        where.create_dataset(mapper[el], data=valore)
+            elif 'SubSectionList' in type(valore).__name__:
+                if mdef in MM.keys():
+                    new_dati_list = list(valore)
+                    for ndati in new_dati_list:
+                        repos = create_group_to_fill(
+                            MM[mdef]['NX_class'], where, ndati.name
+                        )
+                        write_data_new(ndati, repos, MM[mdef]['mapper'], MM)
+            elif type(valore).__name__.endswith('SubSection'):
+                if mdef in MM.keys():
+                    for ndati in valore:
+                        repos = create_group_to_fill(
+                            MM[mdef]['NX_class'], where, ndati.name
+                        )
+                        write_data_new(ndati, repos, MM[mdef]['mapper'], MM)
+
+# Funzione che richiama la precedente e che crea davvero il nexus generandone l'entry.
+
+
+def instanciate_nexus(output_file, dati, nxdl: str) -> None:
+    # carico il manager giusto
+    MM = load_mapper_manager(nxdl)
+
+    # l’entry mapper lo prendo dal manager
+    # supponendo che tu abbia sempre una voce "Entry" o simile
+    entry_mapper = MM.get("Entry", {}).get("mapper", None)
+    if entry_mapper is None:
+        raise RuntimeError(f"Nessun entry mapper definito per {nxdl}")
+    with h5py.File(output_file, 'w') as f:
+        entry = f.create_group('entry')
+        entry.attrs['NX_class'] = 'NXentry'
+        entry.create_dataset('definition', data=nxdl)
+        if dati is not None:
+            write_data_new(dati, entry, entry_mapper, MM)

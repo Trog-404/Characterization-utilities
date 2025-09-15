@@ -6,9 +6,6 @@ mapper = {
     'institution': 'experiment_institution',
     'facility': 'experiment_facility',
     'laboratory': 'experiment_laboratory',
-    'id_item_processed': '',
     'starting_date': 'start_time',
-    'ending_date': 'end_time',
-    'step_type': '',
-    'nxdl': 'definition',
+    'ending_date': 'end_time'
 }
