@@ -1,6 +1,6 @@
 #######################################################################################
 #         FILE CON FUNZIONI UTILI NELLA GENERAZIONE DEI FILE NEXUS A PARTIRE          #
-#                        DA JSON O DIZIONARI NON SERIALIZZATI                         #
+#               DA DIZIONARI E PER PARSARE GLI ARCHIVI DA CUI SI PARTE                #
 #######################################################################################
 
 import h5py
@@ -12,7 +12,8 @@ from characterization_nexus.mappers import load_mapper_manager
 # Funzioni utili per lavorare con i datetime e scriverli in nexus con un controllo sul
 # tipo se è quello atteso
 
-dt=h5py.string_dtype(encoding="utf-8")
+dt = h5py.string_dtype(encoding='utf-8')
+
 
 def is_iso8601(s: str) -> bool:
     try:
@@ -20,6 +21,7 @@ def is_iso8601(s: str) -> bool:
         return True
     except (ValueError, TypeError):
         return False
+
 
 # La prossima funzione ci permette di generare i gruppi dei nostri file hdf5
 # leggendo la struttura dei json i quali saranno del tipo:
@@ -95,9 +97,11 @@ def write_data(dati, where):
                 newwhere = create_group_to_fill(dati[row]['m_def'], where, row)
                 write_data(dati[row], newwhere)
 
+
 # Le prossime due funzioni servono per estrarre il nome della classe che si legge
 # nelle sottosezioni per poi utilizzarlo nella definizione della classe nexus da usare
 # nella traduzione e quindi per reindirizzare poi al corretto mapping.
+
 
 def get_real_mdef(old_key: str) -> str:
     if ':' in str(old_key):
@@ -106,7 +110,8 @@ def get_real_mdef(old_key: str) -> str:
         new_key = str(old_key)
     return new_key.split('(', 1)[0]
 
-def is_scalar(value) ->bool :
+
+def is_scalar(value) -> bool:
     if np.isscalar(value):
         return True
     elif isinstance(value, str):
@@ -114,9 +119,11 @@ def is_scalar(value) ->bool :
     else:
         return False
 
+
 # Questa funzione ci permette di scrivere correttamente i dati dalla struttura ad
 # archivio di nomad alla struttura nexus. Quindi fondamentalmente è il building block
 # con cui gli ELNs vengono tradotti in dati nexus.
+
 
 def write_data_new(dati, where, mapper: dict, MM: dict) -> None:
     for el in dati:
@@ -145,6 +152,7 @@ def write_data_new(dati, where, mapper: dict, MM: dict) -> None:
                         )
                         write_data_new(ndati, repos, MM[mdef]['mapper'], MM)
 
+
 # Funzione che richiama la precedente e che crea davvero il nexus generandone l'entry.
 
 
@@ -154,12 +162,16 @@ def instanciate_nexus(output_file, dati, nxdl: str) -> None:
 
     # l’entry mapper lo prendo dal manager
     # supponendo che tu abbia sempre una voce "Entry" o simile
-    entry_mapper = MM.get("Entry", {}).get("mapper", None)
+    entry_mapper = MM.get('Entry', {}).get('mapper', None)
     if entry_mapper is None:
-        raise RuntimeError(f"Nessun entry mapper definito per {nxdl}")
+        raise RuntimeError(f'Nessun entry mapper definito per {nxdl}')
     with h5py.File(output_file, 'w') as f:
         entry = f.create_group('entry')
         entry.attrs['NX_class'] = 'NXentry'
         entry.create_dataset('definition', data=nxdl)
         if dati is not None:
             write_data_new(dati, entry, entry_mapper, MM)
+
+
+# TODO: Inserire supporto per quantità vettoriali e descrizone dell'entry con versione
+#       e URL

@@ -7,5 +7,5 @@ mapper = {
     'facility': 'experiment_facility',
     'laboratory': 'experiment_laboratory',
     'starting_date': 'start_time',
-    'ending_date': 'end_time'
+    'ending_date': 'end_time',
 }

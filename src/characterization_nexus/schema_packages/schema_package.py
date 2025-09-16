@@ -25,6 +25,7 @@ from characterization_nexus.convert.em_convert.parser import write_data_to_nexus
 
 m_package = Package(name='General instruments for characterization steps')
 
+
 class SampleComponentbase(ItemComponent):
     m_def = Section(
         a_eln={

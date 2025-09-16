@@ -114,7 +114,6 @@ where = ["src"]
 
 [project.entry-points.'nomad.plugin']
 
-schema_package_entry_point = "characterization_nexus.schema_packages:schema_package_entry_point"
 em_schema_package_entry_point = "characterization_nexus.schema_packages:em_schema_package_entry_point"
 
 app_entry_point = "characterization_nexus.apps:app_entry_point"

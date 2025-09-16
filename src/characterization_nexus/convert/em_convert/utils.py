@@ -1,5 +1,7 @@
 import re
 
+from pydantic import BaseModel
+
 # This function is useful if for some reasons tags from the dict are stored in a single
 # text that needs to be parsed. For example if we have metadata written as 'tag1=value1
 # \n tag2=value' we are able to split the two tags with the relative values as
@@ -64,3 +66,58 @@ def set_nested(d: dict, path: str, value):
     for k in keys[:-1]:
         d = d.setdefault(k, {})
     d[keys[-1]] = value
+
+
+class SectionHeader(BaseModel):
+    path: str
+    name: str | None
+    type_class: str
+
+
+class Matcher:
+    def __init__(
+        self, target_group: 'SectionHeader' = None, values_to_save: dict = None
+    ):
+        self.target_group = target_group
+        self.values_to_save = values_to_save
+
+    def set_group(self, where):
+        grp = where.require_group(self.target_group.path)
+        grp.attrs['NX_class'] = self.target_group.type_class
+        return grp
+
+    def populate_group(self, grp, dati_input):
+        if self.values_to_save is not None:
+            for field, rules in self.values_to_save.items():
+                alias = rules.get('alias', None)
+                unit = rules.get('unit', None)
+                metodo = rules.get('get', None)
+                # Prima prova con l'alias
+                value_found = False
+                if alias is not None:
+                    value = get_nested(dati_input, alias)
+                    if isinstance(value, str) and value != '':
+                        numeric_value = try_parse_number(value)
+                        if numeric_value is not None:
+                            grp.create_dataset(field, data=numeric_value)
+                            if unit is not None:
+                                grp[field].attrs['units'] = unit
+                            break
+                        if metodo is not None:
+                            new = metodo(value)
+                            grp.create_dataset(field, data=new)
+                            break
+                        else:
+                            # non parsabile -> salvo come stringa
+                            grp.create_dataset(field, data=value)
+                            break
+                    elif isinstance(value, int | float):
+                        grp.create_dataset(field, data=value)
+                        break
+                    value_found = True
+                    break
+                # Se non è stato trovato nessun valore in alias prova con il metodo get
+                if not value_found and metodo is not None:
+                    computed_value = metodo(dati_input)
+                    if computed_value is not None:
+                        grp.create_dataset(field, data=computed_value)

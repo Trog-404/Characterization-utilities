@@ -23,6 +23,7 @@ from characterization_nexus.schema_packages.schema_package import (
 
 m_package = Package(name='Definitions to define an ELN for electron microscopy steps')
 
+
 class SampleComponent(SampleComponentbase):
     m_def = Section(
         a_eln={
@@ -66,31 +67,21 @@ class Sample(Samplebase):
         }
     )
 
-    is_simulation = Quantity(
-        type=bool,
-        a_eln={'component': 'BoolEditQuantity'}
-    )
+    is_simulation = Quantity(type=bool, a_eln={'component': 'BoolEditQuantity'})
     physical_form = Quantity(
-        type=MEnum(
-            'bulk',
-            'foil',
-            'powder',
-            'thin film'
-        ),
+        type=MEnum('bulk', 'foil', 'powder', 'thin film'),
         a_eln={'component': 'EnumEditQuantity'},
     )
-    atom_types = Quantity(
-        type=str,
-        a_eln={'component': 'StringEditQuantity'}
-    )
+    atom_types = Quantity(type=str, a_eln={'component': 'StringEditQuantity'})
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
         if self.chemical_formula:
-            atoms=[]
+            atoms = []
             for element_composition in self.elemental_composition:
                 atoms.append(element_composition.element)
-            self.atom_types = ", ".join(atoms)
+            self.atom_types = ', '.join(atoms)
+
 
 class EmStepConverter(CharacterizationStepConverter):
     m_def = Section(
@@ -122,7 +113,6 @@ class EmStepConverter(CharacterizationStepConverter):
                     'definition_of_process_step',
                     'nxdl',
                     'input_data_files',
-                    'additional_data_to_convert',
                     'output',
                     'export',
                     'nexus_view',
@@ -136,7 +126,7 @@ class EmStepConverter(CharacterizationStepConverter):
         type=MEnum(sorted(list(set(get_app_defs_names())))),
         description='The nxdl needed for running the Nexus converter.',
         a_eln=dict(component='AutocompleteEditQuantity'),
-        default= 'NXem'
+        default='NXem',
     )
 
     samples = SubSection(section_def=Sample, repeats=True)

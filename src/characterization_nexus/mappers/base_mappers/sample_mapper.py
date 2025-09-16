@@ -5,5 +5,5 @@ mapper = {
     'chemical_formula': 'chemical_formula',
     'datetime': 'preparation_date',
     'physical_form': 'physical_form',
-    'description': 'description'
+    'description': 'description',
 }
