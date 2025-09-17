@@ -1,0 +1,48 @@
+{
+	"data":{
+		"m_def":"characterization_utilities.schema_packages.em_schema.EmStepConverter",
+		"name":"Prova converter",
+		"id_item_processed":"1",
+		"starting_date":"2025-09-15T08:24:00+00:00",
+		"ending_date":"2025-09-16T08:24:00+00:00",
+		"step_id":"Step123",
+		"description":"<p>Prova descrizione</p>",
+		"affiliation":"FBK",
+		"location":"Trento",
+		"institution":"FBK",
+		"facility":"MTSD",
+		"laboratory":"Locale PFIB",
+		"step_type":"SEM",
+		"nxdl":"NXem",
+		"input_data_files":["U1502_metal_cross_5um_015.tif"],
+		"users":[
+			{
+				"name":"Matteo Bontorno",
+				"role":"Collaborator",
+				"affiliation":"FBK",
+				"address":"Povo(TN), Italy",
+				"telephone_number":"123",
+				"fax_number":"123",
+				"email":"",
+				"ORCID":"1234-5678-9012-3456",
+				"facility_user_id":"1"
+			}
+		],
+		"samples":[
+			{
+				"name":"Sample1",
+				"datetime":"2025-09-15T11:59:58.135530+00:00",
+				"lab_id":"Samp1",
+				"description":"<p>Sample description</p>",
+				"chemical_formula":"SiO2",
+				"id_wafer_parent":"ID2",
+				"shapeType":"Wafer with flat standard",
+				"notes":"<p>Questa non viene esportata</p>",
+				"type":"sample",
+				"physical_form":"bulk",
+				"situation":"vacuum",
+				"is_simulation":true
+			}
+		]
+	}
+}

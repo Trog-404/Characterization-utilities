@@ -12,9 +12,9 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "License :: OSI Approved :: MIT License",
 ]
-name = "characterization_nexus"
-description = "Plugin to standardize proprietary data formats in NeXuS"
-version = "1.3.0"
+name = "characterization_utilities"
+description = "Plugin to treat characterization steps and standardize them from proprietary data formats to NeXuS"
+version = "1.4.0"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [
@@ -27,12 +27,12 @@ license = { file = "LICENSE" }
 dependencies = [
     "nomad-lab>=1.3.0",
     "python-magic-bin; sys_platform == 'win32'",
-    "fabrication_facilities @ git+https://github.com/Trog-404/Fabrication-utilities.git",
+    "Fabrication-utilities @ git+https://github.com/Trog-404/Fabrication-utilities.git",
     "pynxtools",
 ]
 
 [project.urls]
-Repository = "https://github.com/Trog-404/characterization_nexus"
+Repository = "https://github.com/Trog-404/Characterization-utilities"
 
 [project.optional-dependencies]
 dev = ["ruff", "pytest", "structlog"]
@@ -114,10 +114,10 @@ where = ["src"]
 
 [project.entry-points.'nomad.plugin']
 
-em_schema_package_entry_point = "characterization_nexus.schema_packages:em_schema_package_entry_point"
+em_schema_package_entry_point = "characterization_utilities.schema_packages:em_schema_package_entry_point"
 
-app_entry_point = "characterization_nexus.apps:app_entry_point"
-example_upload_entry_point = "characterization_nexus.example_uploads:example_upload_entry_point"
+#app_entry_point = "characterization_utilities.apps:app_entry_point"
+example_upload_entry_point = "characterization_utilities.example_uploads:example_upload_entry_point"
 [tool.cruft]
 # Avoid updating workflow files, this leads to permissions issues
 skip = [".github/*"]
