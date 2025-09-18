@@ -94,3 +94,68 @@ def write_data_to_nexus(output, data_file):
         meas = entry.create_group('measurement')
         meas.attrs['NX_class'] = 'NXem_measurement'
         write_measurement_section(meas, data_file)
+
+
+def verify_if_is_tif(file) -> bool:
+    return True
+
+
+def extract_metadata_from_tif_page(tif_page) -> dict:
+    mio_dict = {}
+    for tag in tif_page.tags:
+        try:
+            if (
+                isinstance(tag.value, str)
+                or isinstance(tag.value, float)
+                or isinstance(tag.value, int)
+            ):
+                mio_dict[tag.name] = tag.value
+            elif isinstance(tag.value, tuple):
+                mio_dict[tag.name] = list(tag.value)
+            elif isinstance(tag.value, bytes):
+                new = str(tag.value)
+                mio_dict |= search_quantities(new)
+            elif isinstance(tag.value, dict):
+                mio_dict[tag.name] = tag.value
+        except Exception:
+            mio_dict[tag.name] = 'Non leggibile'
+    return mio_dict
+
+
+def tiff_parser(where, file_tiff, logger) -> None:
+    if verify_if_is_tif(file_tiff):
+        with tf.TiffFile(file_tiff) as tif:
+            for count, page in enumerate(tif.pages):
+                name = file_tiff.split('/')[-1]
+                name = name.split('.')[0]
+                dati = page.asarray()
+                # Inserire qui una routine di controllo tipo dati
+                if dati.dtype != np.uint16:
+                    dati = (dati / dati.max() * 65535).astype(np.uint16)
+                matchers = load_matchers(page.tags, logger)
+                metadata = extract_metadata_from_tif_page(page)
+                for matching in matchers:
+                    newgrp = matching.set_group(where, name, count)
+                    matching.populate_group(newgrp, metadata)
+                image = where[f'event_{name}_{count}'].create_group(f'image_{count}')
+                image.attrs['NX_class'] = 'NXimage'
+                image_2d = where[f'event_{name}_{count}'][
+                    f'image_{count}'
+                ].create_group('image_2d')
+                image_2d.attrs['NX_class'] = 'NXdata'
+                image_2d.create_dataset('title', data=name)
+                image_2d.create_dataset('real', data=dati, dtype='uint16')
+                image_2d.create_dataset('axis_i', data=np.arange(dati.shape[0]))
+                image_2d.create_dataset('axis_j', data=np.arange(dati.shape[1]))
+                image_2d.attrs['signal'] = 'real'
+                image_2d.attrs['axis_i_indices'] = 0
+                image_2d.attrs['axis_j_indices'] = 1
+
+
+def write_data_to_nexus_new(output, data_file, logger):
+    with h5py.File(output, 'a') as f:
+        entry = f['entry']
+        # entry.attrs['default'] = '/entry/measurement/events/image_0/image_2d'
+        meas = entry.create_group('measurement')
+        meas.attrs['NX_class'] = 'NXem_measurement'
+        tiff_parser(meas, data_file, logger)

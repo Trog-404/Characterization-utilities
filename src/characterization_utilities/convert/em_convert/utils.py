@@ -70,7 +70,6 @@ def set_nested(d: dict, path: str, value):
 
 class SectionHeader(BaseModel):
     path: str
-    name: str | None
     type_class: str
 
 
@@ -81,43 +80,45 @@ class Matcher:
         self.target_group = target_group
         self.values_to_save = values_to_save
 
-    def set_group(self, where):
-        grp = where.require_group(self.target_group.path)
+    def set_group(self, where, name, index):
+        path_to_group = self.target_group.path
+        if 'eventID' in path_to_group:
+            path_to_group = path_to_group.replace('ID', f'_{name}_{index}')
+        grp = where.require_group(path_to_group)
         grp.attrs['NX_class'] = self.target_group.type_class
         return grp
 
     def populate_group(self, grp, dati_input):
-        if self.values_to_save is not None:
-            for field, rules in self.values_to_save.items():
-                alias = rules.get('alias', None)
-                unit = rules.get('unit', None)
-                metodo = rules.get('get', None)
-                # Prima prova con l'alias
-                value_found = False
-                if alias is not None:
-                    value = get_nested(dati_input, alias)
-                    if isinstance(value, str) and value != '':
-                        numeric_value = try_parse_number(value)
-                        if numeric_value is not None:
-                            grp.create_dataset(field, data=numeric_value)
-                            if unit is not None:
-                                grp[field].attrs['units'] = unit
-                            break
-                        if metodo is not None:
-                            new = metodo(value)
-                            grp.create_dataset(field, data=new)
-                            break
-                        else:
-                            # non parsabile -> salvo come stringa
-                            grp.create_dataset(field, data=value)
-                            break
-                    elif isinstance(value, int | float):
-                        grp.create_dataset(field, data=value)
-                        break
-                    value_found = True
-                    break
-                # Se non è stato trovato nessun valore in alias prova con il metodo get
-                if not value_found and metodo is not None:
-                    computed_value = metodo(dati_input)
-                    if computed_value is not None:
-                        grp.create_dataset(field, data=computed_value)
+        if self.values_to_save is None:
+            return
+
+        for field, rules in self.values_to_save.items():
+            alias = rules.get('alias')
+            unit = rules.get('unit')
+            metodo = rules.get('get')
+
+            data = None
+
+            # Prova a prendere il valore dall'alias
+            if alias is not None:
+                value = get_nested(dati_input, alias)
+                if isinstance(value, str) and value != '':
+                    numeric_value = try_parse_number(value)
+                    if numeric_value is not None:
+                        data = numeric_value
+                    elif metodo is not None:
+                        data = metodo(value)
+                    else:
+                        data = value
+                elif isinstance(value, int | float):
+                    data = value
+
+            # Se non trovato tramite alias, prova il metodo
+            if data is None and metodo is not None:
+                data = metodo(dati_input)
+
+            # Se abbiamo un valore valido, creiamo il dataset
+            if data is not None:
+                grp.create_dataset(field, data=data)
+                if unit is not None:
+                    grp[field].attrs['units'] = unit

@@ -1,4 +1,4 @@
-# Welcome to the `characterization_nexus` documentation
+# Welcome to the `characterization_utilities` documentation
 
 Plugin to standardize proprietary data formats in NeXuS
 

@@ -1,5 +1,5 @@
 data:
-  m_def: characterization_nexus.schema_packages.em_schema.EmStepConverter
+  m_def: characterization_utilities.schema_packages.character.CharacterizationStep
   name: Prova converter
   id_item_processed: "1"
   starting_date: "2025-09-15T08:24:00+00:00"
@@ -12,7 +12,6 @@ data:
   facility: MNF
   laboratory: CRD
   step_type: SEM
-  nxdl: NXem
   users:
     - name: Matteo Bontorno
       role: Collaborator
@@ -35,6 +34,4 @@ data:
       shapeType: Wafer with flat standard
       notes: "<p>Questa non viene esportata</p>"
       type: sample
-      physical_form: bulk
       situation: vacuum
-      is_simulation: true

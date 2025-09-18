@@ -1,8 +1,8 @@
-site_name: characterization_nexus
+site_name: characterization_utilities
 site_description: Plugin to standardize proprietary data formats in NeXuS
 site_author: Matteo Bontorno
 
-repo_url: https://github.com/Trog-404/characterization_nexus
+repo_url: https://github.com/Trog-404/characterization_utilities
 edit_uri: ""
 
 nav:

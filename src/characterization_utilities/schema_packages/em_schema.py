@@ -10,15 +10,20 @@ if TYPE_CHECKING:
         BoundLogger,
     )
 
+import os
+
 from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
 from pynxtools.definitions.dev_tools.utils.nxdl_utils import (
     get_app_defs_names,  # pylint: disable=import-error
 )
 
-from characterization_utilities.schema_packages.schema_package import (
-    CharacterizationStepConverter,
+from characterization_utilities.convert.em_convert.parser import write_data_to_nexus_new
+from characterization_utilities.schema_packages.character import (
     Samplebase,
     SampleComponentbase,
+)
+from characterization_utilities.schema_packages.dataconverter import (
+    CharacterizationStepConverter,
 )
 
 m_package = Package(name='Definitions to define an ELN for electron microscopy steps')
@@ -133,6 +138,18 @@ class EmStepConverter(CharacterizationStepConverter):
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
+
+        files_list = self.input_data_files
+        raw_path = archive.m_context.raw_path()
+
+        if self.output:
+            output_file = os.path.join(raw_path, self.output)
+
+        if files_list is not None and len(files_list) > 0 and self.nxdl:
+            for file in files_list:
+                to_write = os.path.join(raw_path, file)
+                #                    write_data_to_nexus(output_file, to_write)
+                write_data_to_nexus_new(output_file, to_write, logger)
 
 
 m_package.__init_metainfo__()

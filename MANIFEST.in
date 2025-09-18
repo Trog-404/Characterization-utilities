@@ -1,2 +1,2 @@
 recursive-include * nomad_plugin.yaml
-graft src/characterization_nexus/example_uploads
+graft src/characterization_utilities/example_uploads

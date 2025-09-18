@@ -4,6 +4,6 @@ if ! command -v rsync >/dev/null 2>&1; then
   echo "rsync required, but not installed!"
   exit 1
 else
-  rsync -avh characterization_nexus/ .
-  rm -rfv characterization_nexus
+  rsync -avh characterization_utilities/ .
+  rm -rfv characterization_utilities
 fi

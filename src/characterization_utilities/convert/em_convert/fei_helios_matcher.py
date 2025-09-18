@@ -5,23 +5,19 @@ from characterization_utilities.convert.em_convert.utils import (
 )
 
 meas_instrument = Matcher(
-    SectionHeader(path='./instrument/', name='', type_class='NXem_instrument'),
+    SectionHeader(path='./instrument/', type_class='NXem_instrument'),
     {'name': {'alias': 'FEI_HELIOS.System.SystemType'}},
 )
 instr_program = Matcher(
-    SectionHeader(path='./instrument/program', name='', type_class='NXprogram'),
+    SectionHeader(path='./instrument/program', type_class='NXprogram'),
     {'program': {'alias': 'FEI_HELIOS.System.Software'}},
 )
-meas_event = Matcher(
-    SectionHeader(path='./events/', name='', type_class='NXem_event_data'), {}
-)
+meas_event = Matcher(SectionHeader(path='./eventID/', type_class='NXem_event_data'), {})
 event_instrument = Matcher(
-    SectionHeader(path='./events/instrument', name='', type_class='NXem_instrument'), {}
+    SectionHeader(path='./eventID/instrument', type_class='NXem_instrument'), {}
 )
 event_instrument_optics = Matcher(
-    SectionHeader(
-        path='./events/instrument/optics', name='', type_class='NXem_optical_system'
-    ),
+    SectionHeader(path='./eventID/instrument/optics', type_class='NXem_optical_system'),
     {
         'magnification': {
             'get': lambda input_dict: (
@@ -40,7 +36,7 @@ event_instrument_optics = Matcher(
             'alias': 'FEI_HELIOS.EBeam.BeamCurrent',
             'unit': 'A',
         },
-        'events.instrument.optics.tilt_correction': {
+        'tilt_correction': {
             'alias': 'FEI_HELIOS.EBeam.TiltCorrectionIsOn',
             'get': lambda x: (
                 True
@@ -52,60 +48,41 @@ event_instrument_optics = Matcher(
 )
 
 instr_ebeam = Matcher(
-    SectionHeader(
-        path='./instrument/ebeam_column',
-        name='',
-        type_class='NXebeam_column'
-    ),
-    {}
+    SectionHeader(path='./instrument/ebeam_column', type_class='NXebeam_column'),
+    {},
 )
 ebeam_source = Matcher(
     SectionHeader(
         path='./instrument/ebeam_column/electron_source/',
-        name='',
-        type_class='NXsource'
+        type_class='NXsource',
     ),
     {
-        'emitter_type': {
-            'alias': 'FEI_HELIOS.EBeam.Source'
-        },
-
-    }
+        'emitter_type': {'alias': 'FEI_HELIOS.EBeam.Source'},
+    },
 )
 event_instr_ebeam = Matcher(
     SectionHeader(
-        path='./events/instrument/ebeam_column',
-        name='',
-        type_class='NXebeam_column'
+        path='./eventID/instrument/ebeam_column', type_class='NXebeam_column'
     ),
     {
-        'operation_mode':{},
-    }
+        'operation_mode': {},
+    },
 )
 
 event_instr_ebeam_source = Matcher(
     SectionHeader(
-        path='./events/instrument/ebeam_column/electron_source/',
-        name='',
-        type_class='NXsource'
+        path='./eventID/instrument/ebeam_column/electron_source/',
+        type_class='NXsource',
     ),
     {
-        'voltage': {
-            'alias': 'FEI_HELIOS.EBeam.HV',
-            'unit': 'V'
-        },
-        'emission_current': {
-            'alias': 'FEI_HELIOS.EBeam.EmissionCurrent',
-            'unit': 'A'
-        }
-    }
+        'voltage': {'alias': 'FEI_HELIOS.EBeam.HV', 'unit': 'V'},
+        'emission_current': {'alias': 'FEI_HELIOS.EBeam.EmissionCurrent', 'unit': 'A'},
+    },
 )
 
 instr_detector = Matcher(
-    SectionHeader(path='./instrument/detector/', name='', type_class='NXdetector'),
-    {
-        'type': {'alias': 'FEI_HELIOS.Detectors.Name'}
-    }
+    SectionHeader(path='./instrument/detector/', type_class='NXdetector'),
+    {'type': {'alias': 'FEI_HELIOS.Detectors.Name'}},
 )
 
 
@@ -119,9 +96,8 @@ matchers = [
     ebeam_source,
     event_instr_ebeam,
     event_instr_ebeam_source,
-    instr_detector
+    instr_detector,
 ]
 
 ### TODO Inserire descrizione degli attributi per i campi che lo richiedono
 ### TODO Inserire la compilazione atumatica del nome per sezioni ripetibili
-

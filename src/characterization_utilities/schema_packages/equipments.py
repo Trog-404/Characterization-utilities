@@ -1,32 +1,32 @@
 ## py module dedicated to characterization tools based on
 ## equipments.py
-#from typing import (
+# from typing import (
 #    TYPE_CHECKING,
-#)
+# )
 #
-#import numpy as np
-#from nomad.datamodel.data import ArchiveSection
-#from nomad.metainfo import (
+# import numpy as np
+# from nomad.datamodel.data import ArchiveSection
+# from nomad.metainfo import (
 #    Package,
 #    Quantity,
 #    Section,
 #    SubSection,
-#)
-#from schema_packages.fabrication_utilities import Equipment
-#from schema_packages.steps.character import (
+# )
+# from schema_packages.fabrication_utilities import Equipment
+# from schema_packages.steps.character import (
 #    CharacterizationTechnique,
-#)
+# )
 #
-#if TYPE_CHECKING:
+# if TYPE_CHECKING:
 #    pass
 #
-#m_package = Package(name='Characterization equipment specific definitions ')
+# m_package = Package(name='Characterization equipment specific definitions ')
 #
 #
 ########################################################################################
 ################################# AFM ##################################################
 ########################################################################################
-#class CharactEquipmentBase(Equipment):
+# class CharactEquipmentBase(Equipment):
 #    m_def = Section(
 #        a_eln={
 #            'hide': [
@@ -100,7 +100,7 @@
 #    )
 #
 #
-#class AFM_System(CharactEquipmentBase, ArchiveSection):
+# class AFM_System(CharactEquipmentBase, ArchiveSection):
 #    m_def = Section(
 #        a_eln={
 #            'hide': [
@@ -152,7 +152,7 @@
 #    )
 #
 #
-#class FourPointProbe_System(CharactEquipmentBase, ArchiveSection):
+# class FourPointProbe_System(CharactEquipmentBase, ArchiveSection):
 #    m_def = Section(
 #        a_eln={
 #            'hide': [

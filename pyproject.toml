@@ -114,10 +114,21 @@ where = ["src"]
 
 [project.entry-points.'nomad.plugin']
 
-em_schema_package_entry_point = "characterization_utilities.schema_packages:em_schema_package_entry_point"
+# Schema packages entry points
+
+characterization_entry_point = "characterization_utilities.schema_packages:Characterization_entry_point"
+dataconverter_entry_point = "characterization_utilities.schema_packages:Dataconverter_entry_point"
+
+## Specific technique entry points
+
+em_schema_package_entry_point = "characterization_utilities.schema_packages:Em_schema_package_entry_point"
 
 #app_entry_point = "characterization_utilities.apps:app_entry_point"
+
+# Example uploads entry points
+
 example_upload_entry_point = "characterization_utilities.example_uploads:example_upload_entry_point"
+
 [tool.cruft]
 # Avoid updating workflow files, this leads to permissions issues
 skip = [".github/*"]

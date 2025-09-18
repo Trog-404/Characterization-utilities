@@ -5,34 +5,34 @@
 ## To be fixed: units for most of the custom parameters, like Ohm/sq, for sheet
 ## resistance and many others
 #
-#from nomad.config.models.ui import (
+# from nomad.config.models.ui import (
 #    App,
 #    Column,
 #    Menu,
 #    MenuItemCustomQuantities,
 #    MenuItemTerms,
 #    SearchQuantities,
-#)
+# )
 #
-#dir0 = 'schema_packages.equipments.character_equipment.CharactEquipmentBase'
-#dir1 = 'schema_packages.equipments.character_equipment.AFM_System'
-#dir2 = 'schema_packages.equipments.character_equipment.FourPointProbe_System'
+# dir0 = 'schema_packages.equipments.character_equipment.CharactEquipmentBase'
+# dir1 = 'schema_packages.equipments.character_equipment.AFM_System'
+# dir2 = 'schema_packages.equipments.character_equipment.FourPointProbe_System'
 #
 #
-#Mainstr = 'data.equipmentTechniques.techniqueMainCategory'
-#Substr = 'data.equipmentTechniques.techniqueSubCategory'
-#gen = 'data.equipmentTechniques.genericEquipmentName'
+# Mainstr = 'data.equipmentTechniques.techniqueMainCategory'
+# Substr = 'data.equipmentTechniques.techniqueSubCategory'
+# gen = 'data.equipmentTechniques.genericEquipmentName'
 #
-#equipmentapp = App(
+# equipmentapp = App(
 #    label='Characterization equipments&Techniques',
 #    path='charact_equipmentapp',
 #    category='Characterization utilities',
 #    description='App to search characterization equipments and useful techniques',
 #    readme="""
 #    This app allows to navigate through the equipments and techniques available in a
-#    clean room system. You can search the techniques available and than the availability
-#    of each instrument that has the desired technique included. At the end also the
-#    instrument's location is findable.
+#    clean room system. You can search the techniques available and than the
+#    availability of each instrument that has the desired technique included. At the
+#    end also the instrument's location is findable.
 #    """,
 #    search_quantities=SearchQuantities(
 #        include=[f'*#{dir0}', f'*#{dir1}', f'*#{dir2}'],
@@ -177,4 +177,4 @@
 #            ),
 #        ],
 #    ),
-#)
+# )

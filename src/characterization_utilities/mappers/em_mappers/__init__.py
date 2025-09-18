@@ -1,10 +1,7 @@
-from characterization_utilities.mappers.em_mappers.entry_mapper import (
-    mapper as emapper
-)
+from characterization_utilities.mappers.em_mappers.entry_mapper import mapper as emapper
 from characterization_utilities.mappers.em_mappers.sample_mapper import (
-    mapper as smapper
+    mapper as smapper,
 )
-
 from characterization_utilities.mappers.em_mappers.user_mapper import mapper as umapper
 
 __all__ = ['emapper', 'umapper', 'smapper']

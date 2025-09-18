@@ -1,4 +1,4 @@
-# characterization_nexus
+# characterization_utilities
 
 Plugin to standardize proprietary data formats in NeXuS
 
@@ -8,8 +8,8 @@ This `nomad` plugin was generated with `Cookiecutter` along with `@nomad`'s [`co
 
 If you want to develop locally this plugin, clone the project and in the plugin folder, create a virtual environment (you can use Python 3.10, 3.11 or 3.12):
 ```sh
-git clone https://github.com/Trog-404/characterization_nexus.git
-cd characterization_nexus
+git clone https://github.com/Trog-404/characterization_utilities.git
+cd characterization_utilities
 python3.11 -m venv .pyenv
 . .pyenv/bin/activate
 ```
