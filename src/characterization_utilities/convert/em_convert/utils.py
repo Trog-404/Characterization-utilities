@@ -88,7 +88,7 @@ class Matcher:
         grp.attrs['NX_class'] = self.target_group.type_class
         return grp
 
-    def populate_group(self, grp, dati_input):
+    def populate_group(self, grp, dati_input, logger):
         if self.values_to_save is None:
             return
 
@@ -119,6 +119,23 @@ class Matcher:
 
             # Se abbiamo un valore valido, creiamo il dataset
             if data is not None:
-                grp.create_dataset(field, data=data)
+                try:
+                    grp.create_dataset(field, data=data)
+                except Exception as e:
+                    logger.info(f'Gruppo già composto da {grp.keys()}')
+                    logger.info(f'Field {field} already compiled in {grp}.')
+                    logger.warning(f'WARNING: {e} present.')
                 if unit is not None:
                     grp[field].attrs['units'] = unit
+
+
+base_matchers = [
+    Matcher(
+        SectionHeader(path='./instrument/', type_class='NXem_instrument'),
+        {'name': {'alias': 'Make'}},
+    ),
+    Matcher(
+        SectionHeader(path='./instrument/program', type_class='NXprogram'),
+        {'program': {'alias': 'Software'}},
+    ),
+]

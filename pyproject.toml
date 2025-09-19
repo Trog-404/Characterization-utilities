@@ -14,7 +14,7 @@ classifiers = [
 ]
 name = "characterization_utilities"
 description = "Plugin to treat characterization steps and standardize them from proprietary data formats to NeXuS"
-version = "1.4.0"
+version = "1.5.0"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [

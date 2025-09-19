@@ -10,7 +10,7 @@ meas_instrument = Matcher(
 )
 instr_program = Matcher(
     SectionHeader(path='./instrument/program', type_class='NXprogram'),
-    {'program': {'alias': 'FEI_HELIOS.System.Software'}},
+    {'program': {'alias': 'FEI_HELIOS.System.Software', 'attributes': {'version': ''}}},
 )
 meas_event = Matcher(SectionHeader(path='./eventID/', type_class='NXem_event_data'), {})
 event_instrument = Matcher(

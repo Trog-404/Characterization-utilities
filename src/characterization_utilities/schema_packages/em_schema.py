@@ -148,7 +148,6 @@ class EmStepConverter(CharacterizationStepConverter):
         if files_list is not None and len(files_list) > 0 and self.nxdl:
             for file in files_list:
                 to_write = os.path.join(raw_path, file)
-                #                    write_data_to_nexus(output_file, to_write)
                 write_data_to_nexus_new(output_file, to_write, logger)
 
 

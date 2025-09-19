@@ -1,6 +1,8 @@
 import importlib
 from typing import TYPE_CHECKING
 
+from characterization_utilities.convert.em_convert.utils import base_matchers
+
 if TYPE_CHECKING:
     from structlog.stdlib import BoundLogger
 
@@ -10,11 +12,12 @@ def load_matchers(tag_list: list, logger: 'BoundLogger') -> list:
     Carica dinamicamente il corretto array di matchers in base allo strumento
     da cui i dati provengono.
     """
-    tag_finder = {50431: 'NISABA', 34682: 'HELIOS'}
+    tag_finder = {50431: 'NISABA', 34682: 'HELIOS', 60000: 'VELION'}
 
     type_to_package = {
         'HELIOS': 'characterization_utilities.convert.em_convert.fei_helios_matcher',
         'NISABA': 'characterization_utilities.convert.em_convert.tescan_matcher',
+        'VELION': 'characterization_utilities.convert.em_convert.raith_velion_matcher',
         # aggiungi altri qui
     }
 
@@ -28,8 +31,7 @@ def load_matchers(tag_list: list, logger: 'BoundLogger') -> list:
                 logger.warning(
                     """
                     No tags match in the registry. Probably file not correctly
-                    formatted or supported. During the conversion the base
-                    matchers are loaded
+                    formatted or supported.
                     """
                 )
             return flag
@@ -37,8 +39,13 @@ def load_matchers(tag_list: list, logger: 'BoundLogger') -> list:
     flag = search_flag_for_matchers(tag_list, logger)
 
     if flag is None:
-        logger.warning('File format non supportato')
-        raise ValueError(f'File format from {flag} non supportato')
+        logger.info(
+            """
+            Due to the absence of a good matcher routine, during the conversion 
+            the base matchers were loaded.
+            """
+        )
+        return base_matchers
 
     module_path = type_to_package[flag]
     module = importlib.import_module(module_path)

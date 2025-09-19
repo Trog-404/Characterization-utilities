@@ -130,13 +130,12 @@ def tiff_parser(where, file_tiff, logger) -> None:
                 name = name.split('.')[0]
                 dati = page.asarray()
                 # Inserire qui una routine di controllo tipo dati
-                if dati.dtype != np.uint16:
-                    dati = (dati / dati.max() * 65535).astype(np.uint16)
                 matchers = load_matchers(page.tags, logger)
                 metadata = extract_metadata_from_tif_page(page)
-                for matching in matchers:
-                    newgrp = matching.set_group(where, name, count)
-                    matching.populate_group(newgrp, metadata)
+                if matchers is not None:
+                    for matching in matchers:
+                        newgrp = matching.set_group(where, name, count)
+                        matching.populate_group(newgrp, metadata, logger)
                 image = where[f'event_{name}_{count}'].create_group(f'image_{count}')
                 image.attrs['NX_class'] = 'NXimage'
                 image_2d = where[f'event_{name}_{count}'][
@@ -144,7 +143,7 @@ def tiff_parser(where, file_tiff, logger) -> None:
                 ].create_group('image_2d')
                 image_2d.attrs['NX_class'] = 'NXdata'
                 image_2d.create_dataset('title', data=name)
-                image_2d.create_dataset('real', data=dati, dtype='uint16')
+                image_2d.create_dataset('real', data=dati)
                 image_2d.create_dataset('axis_i', data=np.arange(dati.shape[0]))
                 image_2d.create_dataset('axis_j', data=np.arange(dati.shape[1]))
                 image_2d.attrs['signal'] = 'real'
@@ -156,6 +155,6 @@ def write_data_to_nexus_new(output, data_file, logger):
     with h5py.File(output, 'a') as f:
         entry = f['entry']
         # entry.attrs['default'] = '/entry/measurement/events/image_0/image_2d'
-        meas = entry.create_group('measurement')
+        meas = entry.require_group('measurement')
         meas.attrs['NX_class'] = 'NXem_measurement'
         tiff_parser(meas, data_file, logger)
