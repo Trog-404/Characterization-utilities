@@ -17,48 +17,26 @@ from pynxtools.definitions.dev_tools.utils.nxdl_utils import (
     get_app_defs_names,  # pylint: disable=import-error
 )
 
-from characterization_utilities.convert.common import instanciate_nexus
-from characterization_utilities.schema_packages.character import CharacterizationStep
-
 m_package = Package(name='General class to convert characterization steps to NeXus')
 
 
-class CharacterizationStepConverter(CharacterizationStep):
+class CharacterizationStepConverter(ArchiveSection):
     m_def = Section(
+        description="""Ideal class to inherit to allow transformation of proprietary
+        formats in the NeXus standard for characterization steps.
+        """,
         a_eln={
-            'hide': [
-                'tag',
-                'duration',
-            ],
             'properties': {
                 'order': [
-                    'name',
-                    'description',
-                    'affiliation',
-                    'location',
-                    'institution',
-                    'facility',
-                    'laboratory',
-                    'keywords',
-                    'id_item_processed',
-                    'starting_date',
-                    'ending_date',
-                    'step_type',
-                    'step_id',
-                    'definition_of_process_step',
-                    'recipe_name',
-                    'recipe_file',
-                    'recipe_preview',
                     'nxdl',
                     'input_data_files',
-                    'additional_data_to_convert',
                     'output',
                     'export',
                     'nexus_view',
                     'notes',
                 ]
             },
-        }
+        },
     )
 
     nxdl = Quantity(
@@ -106,19 +84,6 @@ class CharacterizationStepConverter(CharacterizationStep):
                 )
             except Exception:
                 pass
-            if self.nxdl:
-                instanciate_nexus(output_file, archive.data, self.nxdl)
-                try:
-                    archive.m_context.process_updated_raw_file(
-                        self.output, allow_modify=True
-                    )
-                except Exception as e:
-                    logger.error(
-                        'could not trigger processing', mainfile=self.output, exc_info=e
-                    )
-                else:
-                    logger.info('triggered processing', mainfile=self.output)
-                self.nexus_view = f'../upload/archive/mainfile/{self.output}#/data'
         super().normalize(archive, logger)
 
 

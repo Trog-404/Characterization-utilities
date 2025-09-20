@@ -1,103 +1,58 @@
+from pathlib import Path
+
 import h5py
 import numpy as np
 import tifffile as tf
+import tomllib
+from PIL import Image as im
 
 from characterization_utilities.convert.em_convert import load_matchers
 from characterization_utilities.convert.em_convert.utils import (
     search_quantities,
 )
 
+pyproject_path = Path(__file__).resolve().parents[4] / 'pyproject.toml'
 
-# This function is able to extract from a multipage tiff an array of data for each image
-def extract_data_from_tif(tif_image):
-    name = tif_image.split('/')[-1]
-    name = name.split('.')[0]
-    with tf.TiffFile(tif_image) as tiffile:
-        arrays = []
-        for i, page in enumerate(tiffile.pages):
-            array = page.asarray()
-            # Convertiamo in uint16 preservando il range
-            if array.dtype != np.uint16:
-                array = (array / array.max() * 65535).astype(np.uint16)
-            arrays.append(array)
+with pyproject_path.open('rb') as f:
+    data = tomllib.load(f)
+
+version = data['project']['version']
+
+SUPPORTED_IMAGE_CHANNELS = 2
+
+# This function will be used only for non tiff files to upload at least the image
+
+
+def extract_data_from_image(image_file):
+    name = image_file.split('/')[-1].split('.')[0]
+    arrays = []
+    with im.open(image_file) as img:
+        i = 0
+        while True:
+            try:
+                img.seek(i)
+                arrays.append(np.array(img))
+                i += 1
+            except EOFError:
+                break
+
     return name, arrays
 
 
-# This function extracts metadata from each tiff and id needed convert quantities in
-# type hashable or usabel as dictionar values.
+def verify_if_is_tif(file, logger) -> bool:
+    try:
+        tf.imread(file)
+        return True
+    except tf.TiffFileError:
+        logger.warning('No file tiff provided, base analysis will follow')
+        return False
+    except Exception as e:
+        logger.error(f'Error during the opening of the file {file}: {e}')
+        return False
 
 
-def extract_metadata_from_tif(percorso):
-    dictionar = {}
-    with tf.TiffFile(percorso) as tiffile:
-        dictionar['file_name'] = percorso.split('/')[-1]
-        for i, page in enumerate(tiffile.pages):
-            mio_dict = {}
-            for tag in page.tags:
-                try:
-                    if (
-                        isinstance(tag.value, str)
-                        or isinstance(tag.value, float)
-                        or isinstance(tag.value, int)
-                    ):
-                        mio_dict[tag.name] = tag.value
-                    elif isinstance(tag.value, tuple):
-                        mio_dict[tag.name] = list(tag.value)
-                    elif isinstance(tag.value, bytes):
-                        new = str(tag.value)
-                        mio_dict |= search_quantities(new)
-                    elif isinstance(tag.value, dict):
-                        mio_dict[tag.name] = tag.value
-                except Exception:
-                    mio_dict[tag.name] = 'Non leggibile'
-            dictionar[f'page_{i + 1}'] = mio_dict
-    return dictionar
-
-
-# Funzione che finalmente scrive la sezione measurement con i dati parsati da quelle
-# precedenti
-
-
-def write_measurement_section(where, tiff_file):
-    metadata = extract_metadata_from_tif(tiff_file)
-    matchers = load_matchers('FEI_HELIOS')
-    for i in range(0, len(metadata.keys())):
-        if i == 0:
-            pass
-        else:
-            for matching in matchers:
-                newgrp = matching.set_group(where)
-                matching.populate_group(newgrp, metadata[f'page_{i}'])
-    name, dati = extract_data_from_tif(tiff_file)
-    for idx, dat in enumerate(dati):
-        image = where['events'].create_group(f'image_{idx}')
-        image.attrs['NX_class'] = 'NXimage'
-        image_2d = where['events'][f'image_{idx}'].create_group('image_2d')
-        image_2d.attrs['NX_class'] = 'NXdata'
-        image_2d.create_dataset('title', data=name)
-        image_2d.create_dataset('real', data=dat, dtype='uint16')
-        image_2d.create_dataset('axis_i', data=np.arange(dat.shape[0]))
-        image_2d.create_dataset('axis_j', data=np.arange(dat.shape[1]))
-        image_2d.attrs['signal'] = 'real'
-        image_2d.attrs['axis_i_indices'] = 0
-        image_2d.attrs['axis_j_indices'] = 1
-
-
-# Infine la funzione che apre il file nexus(se già esistente lo aggiorna soltanto senza
-# eliminare dati già esistenti) e richiama la funzione precedente.
-
-
-def write_data_to_nexus(output, data_file):
-    with h5py.File(output, 'a') as f:
-        entry = f['entry']
-        #        entry.attrs['default'] = '/entry/measurement/events/image_0/image_2d'
-        meas = entry.create_group('measurement')
-        meas.attrs['NX_class'] = 'NXem_measurement'
-        write_measurement_section(meas, data_file)
-
-
-def verify_if_is_tif(file) -> bool:
-    return True
+# This function extracts metadata from each page in the tiff and id needed convert
+# quantities in type hashable or reusable as dictionar values.
 
 
 def extract_metadata_from_tif_page(tif_page) -> dict:
@@ -122,25 +77,76 @@ def extract_metadata_from_tif_page(tif_page) -> dict:
     return mio_dict
 
 
+# This function finally allows to populate the measurement section taking a tiff file.
+# Through a matching procedure for each fields required by the NeXus schema, taking the
+# desired values from an input dictionar generated trough the
+# extract_metadata_from_tif_page function and matching from some an ad hoc search
+# defined for each field in the groups. See <nistrument_type>_matchers.py files.
+
+
 def tiff_parser(where, file_tiff, logger) -> None:
-    if verify_if_is_tif(file_tiff):
+    if not verify_if_is_tif(file_tiff, logger):
+        name, arrays = extract_data_from_image(file_tiff)
+        for count, dati in enumerate(arrays):
+            if len(dati.shape) > SUPPORTED_IMAGE_CHANNELS:
+                logger.error(
+                    f"""
+                    File used {file_tiff} has RGB (or RGBA) channels. This format is
+                    not supported. Convert to greyscale and retry.
+                    """
+                )
+            index = f'{name}_{count}'
+            matchers = load_matchers(None, logger)  # dummy call! They are base matchers
+            for matching in matchers:
+                newgrp = matching.set_group(where, index, 0)
+                matching.populate_not_repeatable_group(newgrp, {}, logger)
+
+            image = where[f'event_{index}'].create_group(f'image_{count}')
+            image.attrs['NX_class'] = 'NXimage'
+            image_2d = where[f'event_{index}'][f'image_{count}'].create_group(
+                'image_2d'
+            )
+            image_2d.attrs['NX_class'] = 'NXdata'
+            image_2d.create_dataset('title', data=name)
+            image_2d.create_dataset('real', data=dati)
+            image_2d.create_dataset('axis_i', data=np.arange(dati.shape[0]))
+            image_2d.create_dataset('axis_j', data=np.arange(dati.shape[1]))
+            image_2d.attrs['signal'] = 'real'
+            image_2d.attrs['axis_i_indices'] = 0
+            image_2d.attrs['axis_j_indices'] = 1
+    else:
         with tf.TiffFile(file_tiff) as tif:
             for count, page in enumerate(tif.pages):
                 name = file_tiff.split('/')[-1]
                 name = name.split('.')[0]
                 dati = page.asarray()
+                if len(dati.shape) > SUPPORTED_IMAGE_CHANNELS:
+                    logger.error(
+                        f"""
+                        File used {file_tiff} has RGB (or RGBA) channels. This format 
+                        is not supported. Please convert to greyscale and retry.
+                    """
+                    )
+                index = f'{name}_{count}'
                 # Inserire qui una routine di controllo tipo dati
                 matchers = load_matchers(page.tags, logger)
                 metadata = extract_metadata_from_tif_page(page)
                 if matchers is not None:
                     for matching in matchers:
-                        newgrp = matching.set_group(where, name, count)
-                        matching.populate_group(newgrp, metadata, logger)
-                image = where[f'event_{name}_{count}'].create_group(f'image_{count}')
+                        if matching.check_repeatable(metadata, logger):
+                            matching.generate_repeatable_groups(
+                                where, index, metadata, logger
+                            )
+                        else:
+                            newgrp = matching.set_group(where, index, 0)
+                            matching.populate_not_repeatable_group(
+                                newgrp, metadata, logger
+                            )
+                image = where[f'event_{index}'].create_group(f'image_{count}')
                 image.attrs['NX_class'] = 'NXimage'
-                image_2d = where[f'event_{name}_{count}'][
-                    f'image_{count}'
-                ].create_group('image_2d')
+                image_2d = where[f'event_{index}'][f'image_{count}'].create_group(
+                    'image_2d'
+                )
                 image_2d.attrs['NX_class'] = 'NXdata'
                 image_2d.create_dataset('title', data=name)
                 image_2d.create_dataset('real', data=dati)
@@ -151,10 +157,22 @@ def tiff_parser(where, file_tiff, logger) -> None:
                 image_2d.attrs['axis_j_indices'] = 1
 
 
+# Infine la funzione che apre il file nexus(se già esistente lo aggiorna soltanto senza
+# eliminare dati già esistenti) e richiama la funzione precedente. Moreover additional
+# metadata informations like the profiling section is given.
+
+
 def write_data_to_nexus_new(output, data_file, logger):
+    git_url = 'https://github.com/Trog-404/Characterization-utilities.git'
     with h5py.File(output, 'a') as f:
         entry = f['entry']
-        # entry.attrs['default'] = '/entry/measurement/events/image_0/image_2d'
         meas = entry.require_group('measurement')
         meas.attrs['NX_class'] = 'NXem_measurement'
+        prof = entry.create_group('profiling')
+        prof.attrs['NX_class'] = 'NXcs_profiling'
+        prog = prof.create_group('programID')
+        prog.attrs['NX_class'] = 'NXprogram'
+        prog.create_dataset('program', data='characterization_utilities')
+        prog['program'].attrs['version'] = version
+        prog['program'].attrs['url'] = git_url
         tiff_parser(meas, data_file, logger)

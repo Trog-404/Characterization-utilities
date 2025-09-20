@@ -1,4 +1,5 @@
 import re
+from collections.abc import Callable
 
 from pydantic import BaseModel
 
@@ -71,62 +72,101 @@ def set_nested(d: dict, path: str, value):
 class SectionHeader(BaseModel):
     path: str
     type_class: str
+    is_repeatable: bool | Callable | None = None
 
 
 class Matcher:
     def __init__(
-        self, target_group: 'SectionHeader' = None, values_to_save: dict = None
+        self,
+        target_group: 'SectionHeader' = None,
+        values_to_save: dict = None,
+        is_repeatable=None,
     ):
         self.target_group = target_group
         self.values_to_save = values_to_save
+        self._is_repeatable = target_group.is_repeatable
 
-    def set_group(self, where, name, index):
+    def check_repeatable(self, data, logger):
+        """Calcola se è ripetibile con i dati a disposizione"""
+        if callable(self._is_repeatable):
+            return bool(self._is_repeatable(data))
+        return bool(self._is_repeatable)
+
+    def set_group(self, where, index, counter=None):
         path_to_group = self.target_group.path
         if 'eventID' in path_to_group:
-            path_to_group = path_to_group.replace('ID', f'_{name}_{index}')
+            path_to_group = path_to_group.replace('ID', f'_{index}')
+        if counter is not None:
+            path_to_group = path_to_group.replace('*', f'{counter}')
         grp = where.require_group(path_to_group)
         grp.attrs['NX_class'] = self.target_group.type_class
         return grp
 
-    def populate_group(self, grp, dati_input, logger):
+    def populate_attributes(self, grp, field, unit, attributi, input_dict):
+        if unit is not None:
+            grp[field].attrs['units'] = unit
+        elif attributi is not None:
+            for attr in attributi:
+                grp[field].attrs[attr] = get_nested(input_dict, attributi[attr])
+
+    def populate_not_repeatable_group(self, grp, dati_input, logger):
         if self.values_to_save is None:
             return
-
-        for field, rules in self.values_to_save.items():
-            alias = rules.get('alias')
-            unit = rules.get('unit')
-            metodo = rules.get('get')
-
-            data = None
-
-            # Prova a prendere il valore dall'alias
-            if alias is not None:
-                value = get_nested(dati_input, alias)
-                if isinstance(value, str) and value != '':
-                    numeric_value = try_parse_number(value)
-                    if numeric_value is not None:
-                        data = numeric_value
-                    elif metodo is not None:
-                        data = metodo(value)
-                    else:
+        fields = self.values_to_save.get('fields', None)
+        if fields is not None:
+            for field, rules in fields.items():
+                alias = rules.get('alias', None)
+                unit = rules.get('unit', None)
+                metodo = rules.get('get', None)
+                attributi = rules.get('attributes', None)
+                data = None
+                # Prova a prendere il valore dall'alias
+                if alias is not None:
+                    value = get_nested(dati_input, alias)
+                    if isinstance(value, str) and value != '':
+                        numeric_value = try_parse_number(value)
+                        if numeric_value is not None:
+                            data = numeric_value
+                        elif metodo is not None:
+                            data = metodo(value)
+                        else:
+                            data = value
+                    elif isinstance(value, int | float):
                         data = value
-                elif isinstance(value, int | float):
-                    data = value
+                    # elif isinstance(value, list | tuple):
+                    #    value = np.array(value)
 
-            # Se non trovato tramite alias, prova il metodo
-            if data is None and metodo is not None:
-                data = metodo(dati_input)
+                # Se non trovato tramite alias, prova il metodo
+                if data is None and metodo is not None:
+                    data = metodo(dati_input)
+                # Se abbiamo un valore valido, creiamo il dataset
+                if data is not None:
+                    try:
+                        grp.create_dataset(field, data=data)
+                    except Exception as e:
+                        logger.info(f'Gruppo già composto da {grp.keys()}')
+                        logger.info(f'Field {field} already compiled in {grp}.')
+                        logger.warning(f'WARNING: {e} present.')
+                    self.populate_attributes(grp, field, unit, attributi, dati_input)
 
-            # Se abbiamo un valore valido, creiamo il dataset
-            if data is not None:
-                try:
-                    grp.create_dataset(field, data=data)
-                except Exception as e:
-                    logger.info(f'Gruppo già composto da {grp.keys()}')
-                    logger.info(f'Field {field} already compiled in {grp}.')
-                    logger.warning(f'WARNING: {e} present.')
-                if unit is not None:
-                    grp[field].attrs['units'] = unit
+    def generate_repeatable_groups(self, where, index, dati_input, logger):
+        logger.info(f'Il gruppo {where} è risultato ripetibile uso la routine giusta')
+        src = self.values_to_save.get('src')
+        fields = self.values_to_save.get('repeatable_fields')
+        mix_dict = get_nested(dati_input, src)
+
+        if mix_dict is None:
+            return
+
+        for field_name, pattern in fields.items():
+            regex = re.compile(pattern)
+
+            # iteratore ordinato delle chiavi che matchano
+            matches_iter = sorted(k for k in mix_dict if regex.fullmatch(k))
+            for idx, match in enumerate(matches_iter):
+                grp = self.set_group(where, index, idx)
+                value = get_nested(mix_dict, match)
+                grp.create_dataset(field_name, data=value)
 
 
 base_matchers = [
@@ -137,5 +177,9 @@ base_matchers = [
     Matcher(
         SectionHeader(path='./instrument/program', type_class='NXprogram'),
         {'program': {'alias': 'Software'}},
+    ),
+    Matcher(
+        SectionHeader(path='./measurement/eventID/', type_class='NXem_event_data'),
+        {},
     ),
 ]

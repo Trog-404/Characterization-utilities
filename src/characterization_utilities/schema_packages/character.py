@@ -15,11 +15,20 @@ from nomad.metainfo import MEnum, Package, Quantity, Section, SubSection
 from schema_packages.fabrication_utilities import FabricationProcessStep
 from schema_packages.Items import Item, ItemComponent
 
+# Sample is a particular instance of the Item used in the fabrication workflow.
+# Item is in general a component upon which series of transformation or
+# characteriaztion, in general operation, are performed. Sample is specifically the
+# component which after the preparation activity enter in the characterization
+# experiment.
+
 m_package = Package(name='Base schema to describe characetrization steps.')
 
 
 class SampleComponentbase(ItemComponent):
     m_def = Section(
+        description="""
+        Class to inherit to define descriptor of sample components and their history
+        """,
         a_eln={
             'properties': {
                 'order': [
@@ -31,7 +40,7 @@ class SampleComponentbase(ItemComponent):
                     'datetime',
                 ],
             },
-        }
+        },
     )
 
     history = SubSection(
@@ -46,6 +55,12 @@ class SampleComponentbase(ItemComponent):
 
 class Samplebase(Item):
     m_def = Section(
+        description="""
+        Ideal class to inherit and which must be specilized in useful
+        instances to describe real sample descriptor class for each characterization
+        techique. Following the CHADA instructions sample is always described with a
+        description of the activities used to prepare it.
+        """,
         a_eln={
             'properties': {
                 'order': [
@@ -62,7 +77,7 @@ class Samplebase(Item):
                     'notes',
                 ],
             },
-        }
+        },
     )
     type = Quantity(
         type=MEnum(
@@ -125,6 +140,11 @@ class Samplebase(Item):
 
 class CharacterizationStep(FabricationProcessStep):
     m_def = Section(
+        description="""
+        This is an instance of a NOMAD ELN suitable to manage electron microscopy 
+        experiments. The idea is to allow the user to give information about the 
+        measurement and the preliminary steps (according to CHADA taxonomy).
+        """,
         a_eln={
             'hide': [
                 'tag',
@@ -152,7 +172,7 @@ class CharacterizationStep(FabricationProcessStep):
                     'notes',
                 ]
             },
-        }
+        },
     )
 
     samples = SubSection(section_def=Samplebase, repeats=True)

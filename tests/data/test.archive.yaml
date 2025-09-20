@@ -22,8 +22,6 @@ data:
       email: mbontorno@fbk.it
       ORCID: "1234-5678-9012-3456"
       facility_user_id: "1"
-    - name: Lorenza Ferrario
-      affiliation: FBK
   samples:
     - name: Sample1
       datetime: "2025-09-15T11:59:58.135530+00:00"

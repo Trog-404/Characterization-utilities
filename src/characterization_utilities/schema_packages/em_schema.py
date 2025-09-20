@@ -17,8 +17,10 @@ from pynxtools.definitions.dev_tools.utils.nxdl_utils import (
     get_app_defs_names,  # pylint: disable=import-error
 )
 
+from characterization_utilities.convert.common import instanciate_nexus
 from characterization_utilities.convert.em_convert.parser import write_data_to_nexus_new
 from characterization_utilities.schema_packages.character import (
+    CharacterizationStep,
     Samplebase,
     SampleComponentbase,
 )
@@ -88,8 +90,18 @@ class Sample(Samplebase):
             self.atom_types = ', '.join(atoms)
 
 
-class EmStepConverter(CharacterizationStepConverter):
+class EmStepConverter(CharacterizationStepConverter, CharacterizationStep):
     m_def = Section(
+        description="""
+        This is an instance of a NOMAD ELN suitable to manage electron microscopy 
+        experiments. The idea is to allow the user to give information about the 
+        measurement and the preliminary steps (according to CHADA taxonomy). In 
+        addition the ELN allows to upload SEM measurement images that will be processed
+        to extract all the possible metadata (if supported you will receive a complete
+        output for which the use of a TIFF image format is recommended). You can also
+        analyze your data preliminary thanks to the notebook at the git page
+        https://www.github.com/Trog-404/Characterization-utilities.git. 
+        """,
         a_eln={
             'hide': [
                 'tag',
@@ -124,7 +136,7 @@ class EmStepConverter(CharacterizationStepConverter):
                     'notes',
                 ]
             },
-        }
+        },
     )
 
     nxdl = Quantity(
@@ -144,11 +156,23 @@ class EmStepConverter(CharacterizationStepConverter):
 
         if self.output:
             output_file = os.path.join(raw_path, self.output)
-
-        if files_list is not None and len(files_list) > 0 and self.nxdl:
-            for file in files_list:
-                to_write = os.path.join(raw_path, file)
-                write_data_to_nexus_new(output_file, to_write, logger)
+            if self.nxdl:
+                instanciate_nexus(output_file, archive.data, self.nxdl)
+                if files_list is not None and len(files_list) > 0:
+                    for file in files_list:
+                        to_write = os.path.join(raw_path, file)
+                        write_data_to_nexus_new(output_file, to_write, logger)
+                try:
+                    archive.m_context.process_updated_raw_file(
+                        self.output, allow_modify=True
+                    )
+                except Exception as e:
+                    logger.error(
+                        'could not trigger processing', mainfile=self.output, exc_info=e
+                    )
+                else:
+                    logger.info('triggered processing', mainfile=self.output)
+                self.nexus_view = f'../upload/archive/mainfile/{self.output}#/data'
 
 
 m_package.__init_metainfo__()
