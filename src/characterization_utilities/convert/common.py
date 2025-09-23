@@ -44,7 +44,7 @@ def get_real_mdef(obj: str) -> str:
 def is_a_field(value) -> bool:
     if np.isscalar(value):
         return True
-    elif isinstance(value, str | datetime | list):
+    elif isinstance(value, str | datetime):
         return True
     else:
         return False
@@ -116,4 +116,4 @@ def instanciate_nexus(output_file, dati, nxdl: str, logger) -> None:
             write_data(dati, entry, entry_mapper, MM, logger)
 
 
-# Supporto quantità vettoriali inserito ma da testare
+# Supporto quantità vettoriali rimosso da rivedere
