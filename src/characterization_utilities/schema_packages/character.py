@@ -24,6 +24,16 @@ from schema_packages.Items import Item, ItemComponent
 m_package = Package(name='Base schema to describe characetrization steps.')
 
 
+class History(Activity):
+    m_def = Section()
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        pass
+
+    ## Inseriata così solo per sopprimere la normalizzazione della classe padre
+    # che risulta avere bugs.
+
+
 class SampleComponentbase(ItemComponent):
     m_def = Section(
         description="""
@@ -44,7 +54,7 @@ class SampleComponentbase(ItemComponent):
     )
 
     history = SubSection(
-        section_def=Activity,
+        section_def=History,
         description='Here you can briefly describe the preparation of the component',
         repeats=False,
     )
@@ -129,7 +139,7 @@ class Samplebase(Item):
         repeats=True,
     )
     history = SubSection(
-        section_def=Activity,
+        section_def=History,
         description='Here you can briefly describe the preparation of the item',
         repeats=False,
     )

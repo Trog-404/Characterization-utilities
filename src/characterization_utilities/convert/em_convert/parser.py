@@ -96,7 +96,7 @@ def tiff_parser(where, file_tiff, logger) -> None:
                     """
                 )
             index = f'{name}_{count}'
-            matchers = load_matchers(None, logger)  # dummy call! They are base matchers
+            matchers = load_matchers(None, logger)  # dummy call! They are matchers
             for matching in matchers:
                 newgrp = matching.set_group(where, index, 0)
                 matching.populate_not_repeatable_group(newgrp, {}, logger)
