@@ -102,7 +102,6 @@ def write_data(dati, where, mapper: dict, MM: dict, logger) -> None:
 def instanciate_nexus(output_file, dati, nxdl: str, logger) -> None:
     # carico il manager giusto
     MM = load_mapper_manager(nxdl)
-
     # l’entry mapper lo prendo dal manager
     # supponendo che tu abbia sempre una voce "Entry" o simile
     entry_mapper = MM.get('Entry', {}).get('mapper', None)

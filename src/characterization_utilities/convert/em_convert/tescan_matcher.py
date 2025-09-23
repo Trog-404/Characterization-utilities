@@ -1,35 +1,160 @@
-matching = {
-    'instrument.name': {'aliases': ['name', 'Device']},
-    'instrument.fabrication.model': {'aliases': ['model', 'DeviceModel']},
-    'instrument.fabrication.manufacturer': {'aliases': ['manufacturer', 'Make']},
-    'instrument.detector.type': {'aliases': ['Detector']},
-    'instrument.program.program.program': {'aliases': ['Software']},
-    'instrument.program.program.version': {'aliases': ['SoftwareVersion']},
-    'instrument.ebeam_column.electron_source.emitter_type': {'aliases': ['Gun']},
-    'events.instrument.optics.magnification': {'aliases': ['Magnification']},
-    'events.instrument.optics.working_distance': {
-        'aliases': ['WD'],
-        'unit': 'm',
+import re
+
+from characterization_utilities.convert.em_convert.utils import (
+    Matcher,
+    SectionHeader,
+)
+
+meas_instrument = Matcher(
+    SectionHeader(
+        path='./instrument/', type_class='NXem_instrument', is_repeatable=False
+    ),
+    {'fields': {'name': {'alias': 'Device'}, 'type': {'alias': 'AccType'}}},
+)
+meas_instr_fabr = Matcher(
+    SectionHeader(
+        path='./instrument/fabrication/',
+        type_class='NXfabrication',
+        is_repeatable=False,
+    ),
+    {
+        'fields': {
+            'vendor': {'alias': 'Make'},
+            'model': {'alias': 'DeviceModel'},
+            'serial_number': {'alias': 'SerialNumber'},
+        }
     },
-    'events.instrument.optics.probe_current': {
-        'aliases': ['PredictedBeamCurrent'],
-        'unit': 'A',
+)
+instr_program = Matcher(
+    SectionHeader(
+        path='./instrument/program', type_class='NXprogram', is_repeatable=False
+    ),
+    {
+        'fields': {
+            'program': {
+                'alias': 'Software',
+            }
+        }
     },
-    'events.instrument.optics.tilt_correction': {
-        'aliases': ['TiltCorrection'],
-        'get': lambda x: (
-            True
-            if str(x).lower() == 'yes' or (isinstance(x, int | float) and x != 0)
-            else False
+)
+meas_instr_detector = Matcher(
+    SectionHeader(
+        path='./instrument/detector*/',
+        type_class='NXdetector',
+        is_repeatable=lambda input_dict: (
+            sum(1 for x in input_dict if re.match(r'Detector\d+$', x)) > 1
         ),
+    ),
+    {
+        'fields': {'name': {'alias': 'Detector0'}},
+        'repeatable_fields': {'name': r'Detector\d+$'},
     },
-    'events.instrument.ebeam_column.operation_mode': {'aliases': ['ScanMode']},
-    'events.instrument.ebeam_column.electron_source.voltage': {
-        'aliases': ['AcceleratorVoltage'],
-        'unit': 'V',
+)
+instr_ebeam = Matcher(
+    SectionHeader(
+        path='./instrument/ebeam_column',
+        type_class='NXebeam_column',
+        is_repeatable=False,
+    ),
+    {},
+)
+ebeam_source = Matcher(
+    SectionHeader(
+        path='./instrument/ebeam_column/electron_source/',
+        type_class='NXsource',
+        is_repeatable=False,
+    ),
+    {
+        'fields': {
+            'emitter_type': {'alias': 'Gun'},
+            'probe': {'get': lambda x: 'electron'},
+        }
     },
-    'events.instrument.ebeam_column.electron_source.emission_current': {
-        'aliases': ['EmissionCurrent'],
-        'unit': 'A',
+)
+meas_event = Matcher(
+    SectionHeader(path='./eventID/', type_class='NXem_event_data', is_repeatable=False),
+    {},
+)
+event_instrument = Matcher(
+    SectionHeader(
+        path='./eventID/instrument', type_class='NXem_instrument', is_repeatable=False
+    ),
+    {},
+)
+event_instr_optics = Matcher(
+    SectionHeader(
+        path='./eventID/instrument/optics',
+        type_class='NXem_optical_system',
+        is_repeatable=False,
+    ),
+    {
+        'fields': {
+            'magnification': {'alias': 'Magnification'},
+            'working_distance': {
+                'alias': 'WD',
+                'unit': 'm',
+            },
+            'probe_current': {
+                'alias': 'PredictedBeamCurrent',
+                'unit': 'A',
+            },
+            'tilt_correction': {
+                'alias': 'TiltCorrection',
+                'get': (lambda x: True if x != 0 else False),
+            },
+        }
     },
-}
+)
+event_instr_ebeam = Matcher(
+    SectionHeader(
+        path='./eventID/instrument/ebeam_column',
+        type_class='NXebeam_column',
+        is_repeatable=False,
+    ),
+    {
+        'fields': {
+            'operation_mode': {'alias': 'ScanMode'},
+        }
+    },
+)
+
+event_instr_ebeam_scan = Matcher(
+    SectionHeader(
+        path='./eventID/instrument/ebeam_column/scan_controller',
+        type_class='NXscan_controller',
+        is_repeatable=False,
+    ),
+    {'fields': {'dwell_time': {'alias': 'DwellTime'}}},
+)
+
+event_instr_ebeam_source = Matcher(
+    SectionHeader(
+        path='./eventID/instrument/ebeam_column/electron_source/',
+        type_class='NXsource',
+        is_repeatable=False,
+    ),
+    {
+        'fields': {
+            'voltage': {'alias': 'HV', 'unit': 'V'},
+            'emission_current': {
+                'alias': 'EmissionCurrent',
+                'unit': 'A',
+            },
+        }
+    },
+)
+
+matchers = [
+    meas_instrument,
+    meas_instr_fabr,
+    meas_instr_detector,
+    instr_program,
+    instr_ebeam,
+    ebeam_source,
+    meas_event,
+    event_instrument,
+    event_instr_ebeam,
+    event_instr_ebeam_scan,
+    event_instr_ebeam_source,
+    event_instr_optics,
+]

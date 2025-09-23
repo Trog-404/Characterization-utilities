@@ -151,9 +151,9 @@ class Matcher:
 
     def generate_repeatable_groups(self, where, index, dati_input, logger):
         logger.info(f'Il gruppo {where} è risultato ripetibile uso la routine giusta')
-        src = self.values_to_save.get('src')
+        src = self.values_to_save.get('src', None)
         fields = self.values_to_save.get('repeatable_fields')
-        mix_dict = get_nested(dati_input, src)
+        mix_dict = get_nested(dati_input, src) if src is not None else dati_input
 
         if mix_dict is None:
             return
