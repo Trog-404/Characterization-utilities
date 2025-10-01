@@ -28,7 +28,7 @@ from characterization_utilities.schema_packages.dataconverter import (
     CharacterizationStepConverter,
 )
 
-m_package = Package(name='Definitions to define an ELN for electron microscopy steps')
+m_package = Package(name='Classes to define an ELN for electron microscopy steps')
 
 
 class SampleComponent(SampleComponentbase):

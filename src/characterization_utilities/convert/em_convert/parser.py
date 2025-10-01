@@ -17,6 +17,7 @@ with pyproject_path.open('rb') as f:
     data = tomllib.load(f)
 
 version = data['project']['version']
+url = data['project']['urls']['Repository']
 
 SUPPORTED_IMAGE_CHANNELS = 2
 
@@ -84,6 +85,20 @@ def extract_metadata_from_tif_page(tif_page) -> dict:
 # defined for each field in the groups. See <nistrument_type>_matchers.py files.
 
 
+def generate_2d_image(where, index, title, dati):
+    image = where.create_group(f'image_{index}')
+    image.attrs['NX_class'] = 'NXimage'
+    image_2d = image.create_group('image_2d')
+    image_2d.attrs['NX_class'] = 'NXdata'
+    image_2d.create_dataset('title', data=title)
+    image_2d.create_dataset('real', data=dati)
+    image_2d.create_dataset('axis_i', data=np.arange(dati.shape[0]))
+    image_2d.create_dataset('axis_j', data=np.arange(dati.shape[1]))
+    image_2d.attrs['signal'] = 'real'
+    image_2d.attrs['axis_i_indices'] = 0
+    image_2d.attrs['axis_j_indices'] = 1
+
+
 def tiff_parser(where, file_tiff, logger) -> None:
     if not verify_if_is_tif(file_tiff, logger):
         name, arrays = extract_data_from_image(file_tiff)
@@ -100,20 +115,7 @@ def tiff_parser(where, file_tiff, logger) -> None:
             for matching in matchers:
                 newgrp = matching.set_group(where, index, 0)
                 matching.populate_not_repeatable_group(newgrp, {}, logger)
-
-            image = where[f'event_{index}'].create_group(f'image_{count}')
-            image.attrs['NX_class'] = 'NXimage'
-            image_2d = where[f'event_{index}'][f'image_{count}'].create_group(
-                'image_2d'
-            )
-            image_2d.attrs['NX_class'] = 'NXdata'
-            image_2d.create_dataset('title', data=name)
-            image_2d.create_dataset('real', data=dati)
-            image_2d.create_dataset('axis_i', data=np.arange(dati.shape[0]))
-            image_2d.create_dataset('axis_j', data=np.arange(dati.shape[1]))
-            image_2d.attrs['signal'] = 'real'
-            image_2d.attrs['axis_i_indices'] = 0
-            image_2d.attrs['axis_j_indices'] = 1
+            generate_2d_image(where[f'event_{index}'], count, name, dati)
     else:
         with tf.TiffFile(file_tiff) as tif:
             for count, page in enumerate(tif.pages):
@@ -142,19 +144,7 @@ def tiff_parser(where, file_tiff, logger) -> None:
                             matching.populate_not_repeatable_group(
                                 newgrp, metadata, logger
                             )
-                image = where[f'event_{index}'].create_group(f'image_{count}')
-                image.attrs['NX_class'] = 'NXimage'
-                image_2d = where[f'event_{index}'][f'image_{count}'].create_group(
-                    'image_2d'
-                )
-                image_2d.attrs['NX_class'] = 'NXdata'
-                image_2d.create_dataset('title', data=name)
-                image_2d.create_dataset('real', data=dati)
-                image_2d.create_dataset('axis_i', data=np.arange(dati.shape[0]))
-                image_2d.create_dataset('axis_j', data=np.arange(dati.shape[1]))
-                image_2d.attrs['signal'] = 'real'
-                image_2d.attrs['axis_i_indices'] = 0
-                image_2d.attrs['axis_j_indices'] = 1
+                generate_2d_image(where[f'event_{index}'], count, name, dati)
 
 
 # Infine la funzione che apre il file nexus(se già esistente lo aggiorna soltanto senza
@@ -163,16 +153,18 @@ def tiff_parser(where, file_tiff, logger) -> None:
 
 
 def write_data_to_nexus_new(output, data_file, logger):
-    git_url = 'https://github.com/Trog-404/Characterization-utilities.git'
     with h5py.File(output, 'a') as f:
         entry = f['entry']
         meas = entry.require_group('measurement')
         meas.attrs['NX_class'] = 'NXem_measurement'
-        prof = entry.create_group('profiling')
-        prof.attrs['NX_class'] = 'NXcs_profiling'
-        prog = prof.create_group('programID')
-        prog.attrs['NX_class'] = 'NXprogram'
-        prog.create_dataset('program', data='characterization_utilities')
-        prog['program'].attrs['version'] = version
-        prog['program'].attrs['url'] = git_url
+        try:
+            prof = entry.create_group('profiling')
+            prof.attrs['NX_class'] = 'NXcs_profiling'
+            prog = prof.create_group('programID')
+            prog.attrs['NX_class'] = 'NXprogram'
+            prog.create_dataset('program', data='characterization_utilities')
+            prog['program'].attrs['version'] = version
+            prog['program'].attrs['url'] = url
+        except ValueError:
+            pass
         tiff_parser(meas, data_file, logger)

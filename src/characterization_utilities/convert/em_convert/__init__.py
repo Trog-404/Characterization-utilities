@@ -49,5 +49,6 @@ def load_matchers(tag_list: list, logger: 'BoundLogger') -> list:
 
     module_path = type_to_package[flag]
     module = importlib.import_module(module_path)
+    logger.info(f'Matching routine loaded for {flag} from {module_path}')
 
     return getattr(module, 'matchers', None)

@@ -144,9 +144,8 @@ class Matcher:
                     try:
                         grp.create_dataset(field, data=data)
                     except Exception as e:
-                        logger.info(f'Gruppo già composto da {grp.keys()}')
                         logger.info(f'Field {field} already compiled in {grp}.')
-                        logger.warning(f'WARNING: {e} present.')
+                        logger.warning(f'{e}')
                     self.populate_attributes(grp, field, unit, attributi, dati_input)
 
     def generate_repeatable_groups(self, where, index, dati_input, logger):
@@ -171,15 +170,31 @@ class Matcher:
 
 base_matchers = [
     Matcher(
-        SectionHeader(path='./instrument/', type_class='NXem_instrument'),
-        {'name': {'alias': 'Make'}},
+        SectionHeader(
+            path='./instrument/', type_class='NXem_instrument', is_repeatable=False
+        ),
+        {
+            'fields': {
+                'name': {'alias': 'Make'},
+            }
+        },
     ),
     Matcher(
-        SectionHeader(path='./instrument/program', type_class='NXprogram'),
-        {'program': {'alias': 'Software'}},
+        SectionHeader(
+            path='./instrument/program', type_class='NXprogram', is_repeatable=False
+        ),
+        {
+            'fields': {
+                'name': {'alias': 'Software'},
+            }
+        },
     ),
     Matcher(
-        SectionHeader(path='./measurement/eventID/', type_class='NXem_event_data'),
+        SectionHeader(
+            path='./measurement/eventID/',
+            type_class='NXem_event_data',
+            is_repeatable=False,
+        ),
         {},
     ),
 ]

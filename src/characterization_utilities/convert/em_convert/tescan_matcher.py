@@ -3,6 +3,7 @@ import re
 from characterization_utilities.convert.em_convert.utils import (
     Matcher,
     SectionHeader,
+    get_nested,
 )
 
 meas_instrument = Matcher(
@@ -37,9 +38,9 @@ instr_program = Matcher(
         }
     },
 )
-meas_instr_detector = Matcher(
+event_instr_detector = Matcher(
     SectionHeader(
-        path='./instrument/detector*/',
+        path='./eventID/instrument/detector*/',
         type_class='NXdetector',
         is_repeatable=lambda input_dict: (
             sum(1 for x in input_dict if re.match(r'Detector\d+$', x)) > 1
@@ -102,6 +103,19 @@ event_instr_optics = Matcher(
                 'alias': 'TiltCorrection',
                 'get': (lambda x: True if x != 0 else False),
             },
+            'field_of_view': {
+                'get': lambda x: (
+                    (w / counts)
+                    if (
+                        w := (
+                            float(get_nested(x, 'ImageWidth'))
+                            * float(get_nested(x, 'PixelSizeX'))
+                        )
+                    )
+                    and (counts := float(get_nested(x, 'ViewFieldsCountX')))
+                    else None
+                )
+            },
         }
     },
 )
@@ -147,7 +161,7 @@ event_instr_ebeam_source = Matcher(
 matchers = [
     meas_instrument,
     meas_instr_fabr,
-    meas_instr_detector,
+    event_instr_detector,
     instr_program,
     instr_ebeam,
     ebeam_source,
