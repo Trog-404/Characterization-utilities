@@ -10,7 +10,7 @@ meas_instrument = Matcher(
     SectionHeader(
         path='./instrument/', type_class='NXem_instrument', is_repeatable=False
     ),
-    {'fields': {'name': {'alias': 'Device'}, 'type': {'alias': 'AccType'}}},
+    {'fields': {'name': {'alias': 'Device'}, 'type': {'get': (lambda x: 'sem')}}},
 )
 meas_instr_fabr = Matcher(
     SectionHeader(
@@ -58,6 +58,14 @@ instr_ebeam = Matcher(
         is_repeatable=False,
     ),
     {},
+)
+instr_ebeam_fabrication = Matcher(
+    SectionHeader(
+        path='./instrument/ebeam_column',
+        type_class='NXebeam_column',
+        is_repeatable=False,
+    ),
+    {'fields': {'model': {'alias': 'AccType'}}},
 )
 ebeam_source = Matcher(
     SectionHeader(
@@ -164,6 +172,7 @@ matchers = [
     event_instr_detector,
     instr_program,
     instr_ebeam,
+    instr_ebeam_fabrication,
     ebeam_source,
     meas_event,
     event_instrument,

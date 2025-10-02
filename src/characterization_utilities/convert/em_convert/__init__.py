@@ -7,7 +7,7 @@ if TYPE_CHECKING:
     from structlog.stdlib import BoundLogger
 
 
-def load_matchers(tag_list: list, logger: 'BoundLogger') -> list:
+def load_matchers(tag_list: list, metadata: dict, logger: 'BoundLogger') -> list:
     """
     Carica dinamicamente il corretto array di matchers in base allo strumento
     da cui i dati provengono.
@@ -50,5 +50,8 @@ def load_matchers(tag_list: list, logger: 'BoundLogger') -> list:
     module_path = type_to_package[flag]
     module = importlib.import_module(module_path)
     logger.info(f'Matching routine loaded for {flag} from {module_path}')
+    if hasattr(module, 'get_matchers'):
+        logger.info(f'Loaded get_matchers for {flag} from {module_path}')
+        return module.get_matchers(metadata)
 
     return getattr(module, 'matchers', None)

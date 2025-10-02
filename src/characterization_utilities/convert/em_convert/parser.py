@@ -131,8 +131,8 @@ def tiff_parser(where, file_tiff, logger) -> None:
                     )
                 index = f'{name}_{count}'
                 # Inserire qui una routine di controllo tipo dati
-                matchers = load_matchers(page.tags, logger)
                 metadata = extract_metadata_from_tif_page(page)
+                matchers = load_matchers(page.tags, metadata, logger)
                 if matchers is not None:
                     for matching in matchers:
                         if matching.check_repeatable(metadata, logger):
